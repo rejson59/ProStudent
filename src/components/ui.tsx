@@ -42,9 +42,10 @@ export function Ring({ value, size = 120, stroke = 10, color = "var(--color-sage
   );
 }
 
-export function Btn({ children, className, variant = "solid", ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "solid" | "ghost" | "soft" }) {
+export function Btn({ children, className, variant = "solid", type = "button", ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "solid" | "ghost" | "soft" }) {
   return (
     <button
+      type={type}
       {...p}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[.97] disabled:opacity-40 cursor-pointer",

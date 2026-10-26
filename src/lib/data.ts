@@ -91,7 +91,9 @@ const KNOWN: Record<string, string> = {
 };
 
 export function subjectColor(name: string) {
-  const key = name.trim().toLowerCase();
+  // Defensywnie: dane z localStorage mogą być w starym formacie.
+  const key = (typeof name === "string" ? name : "").trim().toLowerCase();
+  if (!key) return "var(--color-muted)";
   if (KNOWN[key]) return KNOWN[key];
   let h = 0;
   for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;

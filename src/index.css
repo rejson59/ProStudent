@@ -8,7 +8,7 @@
   --color-paper: #f5efe4;
   --color-card: #fffaf3;
   --color-ink: #2d2a32;
-  --color-muted: #847c86;
+  --color-muted: #6f6771;
   --color-line: #eae0cf;
   --color-sage: #6f9f7e;
   --color-clay: #e07a5f;
@@ -26,6 +26,14 @@
   --color-line: #2a2e43;
 }
 
+html {
+  color-scheme: light;
+}
+
+.night {
+  color-scheme: dark;
+}
+
 html,
 body {
   background: var(--color-paper);
@@ -37,6 +45,12 @@ body {
   background-image: radial-gradient(color-mix(in oklab, var(--color-ink) 7%, transparent) 1px, transparent 1px);
   background-size: 22px 22px;
   -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
 }
 
 ::selection {
@@ -108,3 +122,14 @@ input[type="range"] { accent-color: var(--color-sage); }
 
 .scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
 .scroll-thin::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { mulberry } from "../lib/color";
 import type { Session } from "../lib/data";
 
@@ -65,17 +66,20 @@ function Flower({ seed, x, y, fresh }: { seed: number; x: number; y: number; fre
 }
 
 export function Garden({ sessions, height = 170, max = 28, freshId }: { sessions: Session[]; height?: number; max?: number; freshId?: string }) {
+  // Unikalne ID gradientu — `Garden` występuje na stronie więcej niż raz.
+  const uid = useId().replace(/:/g, "");
+  const soil = `soil-${uid}`;
   const list = sessions.slice(-max);
   const W = 400;
   return (
     <svg viewBox={`0 0 ${W} 170`} className="w-full" style={{ height }} preserveAspectRatio="xMidYMax meet">
       <defs>
-        <linearGradient id="soil" x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={soil} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0" stopColor="#8fbf8f" />
           <stop offset="1" stopColor="#6a9a6f" />
         </linearGradient>
       </defs>
-      <path d="M0 150 Q 100 136 200 142 T 400 140 V170 H0Z" fill="url(#soil)" />
+      <path d="M0 150 Q 100 136 200 142 T 400 140 V170 H0Z" fill={`url(#${soil})`} />
       {Array.from({ length: 26 }, (_, i) => {
         const x = 8 + i * 15.5;
         return <path key={i} d={`M${x} 152 l2 -7 l1 7 l2 -5 l1 5`} stroke="#5d9a68" strokeWidth="1.4" fill="none" />;

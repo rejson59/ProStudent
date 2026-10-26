@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { clamp, mix, mulberry } from "../lib/color";
 
 const KEYS: [number, string, string][] = [
@@ -34,6 +34,12 @@ export function skyInfo(now: Date) {
 }
 
 export function Sky({ now, children, className = "" }: { now: Date; children?: ReactNode; className?: string }) {
+  // ID gradientów muszą być unikalne — inaczej druga instancja `Sky` na stronie
+  // przejęłaby definicje pierwszej.
+  const uid = useId().replace(/:/g, "");
+  const sunGlow = `sunglow-${uid}`;
+  const moonGlow = `moonglow-${uid}`;
+
   const { h, day } = skyInfo(now);
   const { top, bottom } = skyAt(h);
 
@@ -56,18 +62,15 @@ export function Sky({ now, children, className = "" }: { now: Date; children?: R
     <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(180deg, ${top}, ${bottom})`, transition: "background 2s" }}>
       <svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMax slice" className="absolute inset-0 w-full h-full">
         <defs>
-          <radialGradient id="sunglow">
+          <radialGradient id={sunGlow}>
             <stop offset="0%" stopColor="#fff6d5" stopOpacity="0.9" />
             <stop offset="40%" stopColor="#ffd98a" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#ffd98a" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="moonglow">
+          <radialGradient id={moonGlow}>
             <stop offset="0%" stopColor="#e9ecff" stopOpacity="0.5" />
             <stop offset="100%" stopColor="#e9ecff" stopOpacity="0" />
           </radialGradient>
-          <mask id="moonmask">
-            <rect width="1000" height="300" fill="white" />
-          </mask>
         </defs>
         <g opacity={1 - day}>
           {stars.map((s, i) => (
@@ -76,14 +79,14 @@ export function Sky({ now, children, className = "" }: { now: Date; children?: R
         </g>
         {moon && day < 0.7 && (
           <g opacity={1 - day} transform={`translate(${moon.x} ${moon.y})`}>
-            <circle r="60" fill="url(#moonglow)" />
+            <circle r="60" fill={`url(#${moonGlow})`} />
             <circle r="18" fill="#f3f1ff" />
             <circle r="16" cx="9" cy="-5" fill={top} opacity="0.92" />
           </g>
         )}
         {sun && day > 0.02 && (
           <g transform={`translate(${sun.x} ${sun.y})`} opacity={Math.min(1, day * 1.4)}>
-            <circle r="110" fill="url(#sunglow)" />
+            <circle r="110" fill={`url(#${sunGlow})`} />
             <circle r="26" fill="#fff3c4" />
           </g>
         )}

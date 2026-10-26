@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useLocal } from "../lib/store";
+import { decodeSubjects, decodeText } from "../lib/schema";
 import { GRADE_NAMES, defaultSubjects, parseGrade, predicted, subjectColor, uid, weightedAvg, type Subject } from "../lib/data";
 import { Btn, CardTitle, PageHeader, Ring } from "./ui";
 import { Icon } from "./Icon";
 import { confetti } from "../lib/confetti";
+import { useToast } from "./Toast";
 
 const gradeColor = (v: number | null) => {
   if (v == null) return "var(--color-muted)";
@@ -14,7 +16,18 @@ const gradeColor = (v: number | null) => {
   return "#c4475a";
 };
 
-function SubjectCard({ s, onChange, onDelete, delay }: { s: Subject; onChange: (s: Subject) => void; onDelete: () => void; delay: number }) {
+function SubjectCard({
+  s,
+  onChange,
+  onDelete,
+  delay,
+}: {
+  s: Subject;
+  onChange: (s: Subject) => void;
+  onDelete: () => void;
+  delay: number;
+}) {
+  const toast = useToast();
   const [val, setVal] = useState("");
   const [weight, setWeight] = useState(1);
   const [note, setNote] = useState("");
@@ -40,7 +53,14 @@ function SubjectCard({ s, onChange, onDelete, delay }: { s: Subject; onChange: (
     <section className="card p-5 rise flex flex-col" style={{ animationDelay: `${delay}s` }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl grid place-items-center font-display font-bold text-white text-lg" style={{ background: color }}>
+          <span
+            className="w-10 h-10 rounded-2xl grid place-items-center font-display font-bold text-lg"
+            style={{
+              background: `color-mix(in oklab, ${color} 22%, var(--color-card))`,
+              color: `color-mix(in oklab, ${color} 65%, var(--color-ink))`,
+            }}
+            aria-hidden
+          >
             {s.name[0]}
           </span>
           <div>
@@ -63,7 +83,25 @@ function SubjectCard({ s, onChange, onDelete, delay }: { s: Subject; onChange: (
             <button
               key={g.id}
               title={`${g.note || "ocena"} · waga ${g.weight} · kliknij, aby usunąć`}
-              onClick={() => onChange({ ...s, grades: s.grades.filter((x) => x.id !== g.id) })}
+              aria-label={`Usuń ocenę ${g.value}${g.note ? ` (${g.note})` : ""}`}
+              onClick={() => {
+                const index = s.grades.findIndex((x) => x.id === g.id);
+                onChange({ ...s, grades: s.grades.filter((x) => x.id !== g.id) });
+                toast(`Usunięto ocenę ${g.value} z ${s.name}`, {
+                  action: {
+                    label: "Cofnij",
+                    run: () =>
+                      onChange({
+                        ...s,
+                        grades: (() => {
+                          const next = [...s.grades];
+                          next.splice(Math.min(index, next.length), 0, g);
+                          return next;
+                        })(),
+                      }),
+                  },
+                });
+              }}
               className="relative h-9 min-w-9 px-2 rounded-xl font-bold text-sm grid place-items-center transition hover:scale-110 hover:line-through cursor-pointer"
               style={{ background: `color-mix(in oklab, ${gradeColor(v)} 18%, transparent)`, color: `color-mix(in oklab, ${gradeColor(v)} 80%, var(--color-ink))` }}
             >
@@ -78,20 +116,43 @@ function SubjectCard({ s, onChange, onDelete, delay }: { s: Subject; onChange: (
       </div>
 
       <form onSubmit={add} className="flex gap-2 mt-4 pt-4 border-t border-line">
-        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="5+" className="input !py-2 w-16 text-center font-bold" maxLength={2} />
-        <select value={weight} onChange={(e) => setWeight(Number(e.target.value))} className="input !py-2 !px-2 text-sm" title="Waga">
+        <input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder="5+"
+          aria-label={`Nowa ocena z przedmiotu ${s.name}`}
+          className="input !py-2 w-16 text-center font-bold"
+          maxLength={2}
+        />
+        <select
+          value={weight}
+          onChange={(e) => setWeight(Number(e.target.value))}
+          className="input !py-2 !px-2 text-sm"
+          aria-label="Waga oceny"
+          title="Waga"
+        >
           {[1, 2, 3, 4, 5].map((w) => (
             <option key={w} value={w}>
               waga {w}
             </option>
           ))}
         </select>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="za co?" className="input !py-2 flex-1 min-w-0 text-sm" />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="za co?"
+          aria-label="Opis oceny"
+          className="input !py-2 flex-1 min-w-0 text-sm"
+        />
         <button disabled={!valid} className="w-10 shrink-0 rounded-xl bg-ink text-paper grid place-items-center disabled:opacity-30 cursor-pointer" aria-label="Dodaj ocenę">
           <Icon name="plus" className="w-4 h-4" />
         </button>
       </form>
-      <button onClick={() => confirm(`Usunąć przedmiot ${s.name}?`) && onDelete()} className="text-[11px] text-muted hover:text-clay mt-3 self-end cursor-pointer">
+      <button
+        onClick={onDelete}
+        className="text-[11px] text-muted hover:text-clay mt-3 self-end cursor-pointer"
+        aria-label={`Usuń przedmiot ${s.name}`}
+      >
         usuń przedmiot
       </button>
     </section>
@@ -99,9 +160,10 @@ function SubjectCard({ s, onChange, onDelete, delay }: { s: Subject; onChange: (
 }
 
 export function Grades() {
-  const [subjects, setSubjects] = useLocal<Subject[]>("subjects", defaultSubjects);
+  const toast = useToast();
+  const [subjects, setSubjects] = useLocal<Subject[]>("subjects", defaultSubjects, decodeSubjects);
   const [newName, setNewName] = useState("");
-  const [calcId, setCalcId] = useState<string>("");
+  const [calcId, setCalcId] = useLocal<string>("gradesCalc", "", decodeText);
   const [target, setTarget] = useState(4.75);
   const [nextW, setNextW] = useState(3);
 
@@ -161,7 +223,12 @@ export function Grades() {
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
               <div className="flex flex-wrap gap-2 items-center text-sm">
                 <span>Z</span>
-                <select value={calcSubject.id} onChange={(e) => setCalcId(e.target.value)} className="input !py-2 font-semibold">
+                <select
+                  value={calcSubject.id}
+                  onChange={(e) => setCalcId(e.target.value)}
+                  aria-label="Przedmiot w kalkulatorze"
+                  className="input !py-2 font-semibold"
+                >
                   {subjects.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -169,7 +236,12 @@ export function Grades() {
                   ))}
                 </select>
                 <span>chcę średnią</span>
-                <select value={target} onChange={(e) => setTarget(Number(e.target.value))} className="input !py-2 font-semibold">
+                <select
+                  value={target}
+                  onChange={(e) => setTarget(Number(e.target.value))}
+                  aria-label="Docelowa średnia"
+                  className="input !py-2 font-semibold"
+                >
                   {[1.75, 2.75, 3.75, 4.75, 5.5].map((t) => (
                     <option key={t} value={t}>
                       {t.toFixed(2)} ({GRADE_NAMES[predicted(t)!]})
@@ -177,7 +249,12 @@ export function Grades() {
                   ))}
                 </select>
                 <span>a następna ocena ma wagę</span>
-                <select value={nextW} onChange={(e) => setNextW(Number(e.target.value))} className="input !py-2 font-semibold">
+                <select
+                  value={nextW}
+                  onChange={(e) => setNextW(Number(e.target.value))}
+                  aria-label="Waga następnej oceny"
+                  className="input !py-2 font-semibold"
+                >
                   {[1, 2, 3, 4, 5].map((w) => (
                     <option key={w}>{w}</option>
                   ))}
@@ -202,7 +279,22 @@ export function Grades() {
             s={s}
             delay={0.05 * i}
             onChange={(ns) => setSubjects((p) => p.map((x) => (x.id === ns.id ? ns : x)))}
-            onDelete={() => setSubjects((p) => p.filter((x) => x.id !== s.id))}
+            onDelete={() => {
+              const index = subjects.findIndex((x) => x.id === s.id);
+              setSubjects((prev) => prev.filter((x) => x.id !== s.id));
+              toast(`Usunięto przedmiot ${s.name}`, {
+                action: {
+                  label: "Cofnij",
+                  run: () =>
+                    setSubjects((prev) => {
+                      if (prev.some((x) => x.id === s.id)) return prev;
+                      const next = [...prev];
+                      next.splice(Math.min(index, next.length), 0, s);
+                      return next;
+                    }),
+                },
+              });
+            }}
           />
         ))}
         <form
@@ -215,7 +307,13 @@ export function Grades() {
           className="rounded-[1.5rem] border-2 border-dashed border-line p-5 flex flex-col justify-center gap-3 min-h-[200px]"
         >
           <p className="font-semibold text-muted text-center">Nowy przedmiot</p>
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="np. Chemia" className="input text-center" />
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="np. Chemia"
+            aria-label="Nazwa nowego przedmiotu"
+            className="input text-center"
+          />
           <Btn variant="soft" type="submit" disabled={!newName.trim()}>
             <Icon name="plus" className="w-4 h-4" /> Dodaj przedmiot
           </Btn>

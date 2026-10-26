@@ -4,6 +4,7 @@ import { Garden } from "./Garden";
 import { Icon } from "./Icon";
 import { Btn, CardTitle, Ring, SubjectDot } from "./ui";
 import { useLocal } from "../lib/store";
+import { decodeSubjects, decodeTasks, decodeText, decodeTimetable } from "../lib/schema";
 import {
   BELLS,
   QUOTES,
@@ -37,12 +38,12 @@ function greeting(h: number) {
 }
 
 export function Dashboard({ now, timer, go, sessions }: Props) {
-  const [name, setName] = useLocal("name", "");
+  const [name, setName] = useLocal("name", "", decodeText);
   const [editingName, setEditingName] = useState(false);
-  const [timetable] = useLocal<string[][]>("timetable", defaultTimetable);
-  const [tasks, setTasks] = useLocal<Task[]>("tasks", defaultTasks);
-  const [subjects] = useLocal<Subject[]>("subjects", defaultSubjects);
-  const [note, setNote] = useLocal("quicknote", "");
+  const [timetable] = useLocal<string[][]>("timetable", defaultTimetable, decodeTimetable);
+  const [tasks, setTasks] = useLocal<Task[]>("tasks", defaultTasks, decodeTasks);
+  const [subjects] = useLocal<Subject[]>("subjects", defaultSubjects, decodeSubjects);
+  const [note, setNote] = useLocal("quicknote", "", decodeText);
 
   const { day } = skyInfo(now);
   const darkText = day > 0.55;
@@ -222,7 +223,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
                       <SubjectDot color={subjectColor(t.subject)} className="w-1.5 h-1.5" /> {t.subject} · {t.kind}
                     </p>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg whitespace-nowrap ${d < 0 ? "bg-clay/15 text-clay" : d <= 1 ? "bg-butter/20 text-[#b7862a]" : "bg-line/70 text-muted"}`}>{relDay(t.due)}</span>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg whitespace-nowrap ${d < 0 ? "bg-clay/15 text-clay" : d <= 1 ? "bg-butter/25 text-[#7a5510]" : "bg-line/70 text-muted"}`}>{relDay(t.due)}</span>
                 </li>
               );
             })}
@@ -316,7 +317,10 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
       </section>
 
       {/* QUOTE */}
-      <section className="md:col-span-6 xl:col-span-4 rise rounded-[1.5rem] p-6 relative overflow-hidden text-white" style={{ animationDelay: ".4s", background: "linear-gradient(135deg, #8f8ad4, #e3879a 60%, #eebc55)" }}>
+      <section
+        className="md:col-span-6 xl:col-span-4 rise rounded-[1.5rem] p-6 relative overflow-hidden text-white"
+        style={{ animationDelay: ".4s", background: "linear-gradient(135deg, #4b4680, #7c3f5c 65%, #8a5a34)" }}
+      >
         <Icon name="sparkle" className="w-24 h-24 absolute -right-4 -top-4 opacity-20" />
         <p className="text-xs uppercase tracking-[.2em] font-semibold opacity-80">Myśl dnia</p>
         <p className="font-display text-xl md:text-2xl mt-3 leading-snug">„{quote[0]}”</p>

@@ -25,7 +25,15 @@ export function Focus({ timer, sessions, freshId }: { timer: Timer; sessions: Se
     setVols(next);
     ambient.set(id, v);
   };
-  const mute = () => SOUNDS.forEach((s) => setVol(s.id, 0));
+  // Wcześniej `SOUNDS.forEach((s) => setVol(s.id, 0))` za każdym razem budowało
+  // nowy stan z tego samego, zamkniętego w domknięciu `vols` — zapisywał się
+  // tylko ostatni dźwięk i suwaki pokazywały nieprawdę.
+  const mute = () => {
+    const next: Record<SoundId, number> = { rain: 0, waves: 0, fire: 0, brown: 0 };
+    savedVols = next;
+    setVols(next);
+    SOUNDS.forEach((sound) => ambient.set(sound.id, 0));
+  };
   const preset = (p: Partial<Record<SoundId, number>>) => {
     const next = { rain: 0, waves: 0, fire: 0, brown: 0, ...p };
     savedVols = next;
@@ -102,7 +110,7 @@ export function Focus({ timer, sessions, freshId }: { timer: Timer; sessions: Se
                 if (timer.running) timer.pause();
                 else timer.start();
               }}
-              className="h-14 px-10 rounded-2xl text-white font-semibold flex items-center gap-2 shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer"
+              className="h-14 px-10 rounded-2xl text-[var(--color-ink)] font-semibold flex items-center gap-2 shadow-lg transition hover:scale-105 active:scale-95 cursor-pointer"
               style={{ background: color, boxShadow: `0 12px 30px -10px ${color}` }}
             >
               <Icon name={timer.running ? "pause" : "play"} className="w-5 h-5" /> {timer.running ? "Pauza" : "Start"}
@@ -139,8 +147,12 @@ export function Focus({ timer, sessions, freshId }: { timer: Timer; sessions: Se
                   <button
                     onClick={() => setVol(s.id, vols[s.id] > 0 ? 0 : 0.5)}
                     className="w-10 h-10 rounded-xl grid place-items-center transition cursor-pointer"
-                    style={{ background: vols[s.id] > 0 ? s.color : "var(--color-paper)", color: vols[s.id] > 0 ? "white" : s.color }}
-                    aria-label={s.label}
+                    style={{
+                      background: vols[s.id] > 0 ? s.color : "var(--color-paper)",
+                      color: vols[s.id] > 0 ? "var(--color-ink)" : s.color,
+                    }}
+                    aria-label={`${s.label} – ${vols[s.id] > 0 ? "włączone" : "wyłączone"}`}
+                    aria-pressed={vols[s.id] > 0}
                   >
                     <Icon name={s.icon} className="w-5 h-5" />
                   </button>
@@ -149,7 +161,18 @@ export function Focus({ timer, sessions, freshId }: { timer: Timer; sessions: Se
                       <span className="font-medium">{s.label}</span>
                       <span className="text-muted text-xs tabular-nums">{Math.round(vols[s.id] * 100)}%</span>
                     </div>
-                    <input type="range" min={0} max={1} step={0.01} value={vols[s.id]} onChange={(e) => setVol(s.id, Number(e.target.value))} className="w-full" style={{ accentColor: s.color }} />
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={vols[s.id]}
+                      onChange={(e) => setVol(s.id, Number(e.target.value))}
+                      className="w-full"
+                      style={{ accentColor: s.color }}
+                      aria-label={`Głośność: ${s.label}`}
+                      aria-valuetext={`${Math.round(vols[s.id] * 100)}%`}
+                    />
                   </div>
                 </div>
               ))}

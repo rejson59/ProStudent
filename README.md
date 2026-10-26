@@ -19,7 +19,8 @@
 | **Fokus** | Timer Pomodoro z trybami, generowane proceduralnie dźwięki tła (deszcz, fale, kominek, szum), presety, statystyki dnia i tygodnia, seria dni |
 | **Fiszki** | Pudełka Leitnera, powtórki ważone, talie, sterowanie klawiaturą |
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
-| **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto, konfetti, powiadomienia o końcu sesji |
+| **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
+| **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
 ---
 
@@ -50,6 +51,7 @@ npm run dev       # http://localhost:5173
 | `npm run build` | Build produkcyjny do `dist/index.html` (jeden plik) |
 | `npm run preview` | Podgląd builda produkcyjnego |
 | `npm run typecheck` | Sprawdzenie typów bez emitowania plików |
+| `npm test` | Testy jednostkowe (Vitest) — logika ocen, planu, dat i dekodery danych |
 
 ---
 
@@ -72,11 +74,16 @@ src/
 │  ├─ Icon.tsx / ui.tsx    # ikony i komponenty bazowe
 │  └─ ...
 ├─ lib/
-│  ├─ store.ts             # useLocal (localStorage) i useNow
+│  ├─ store.ts             # magazyn localStorage (useSyncExternalStore, sync między kartami)
+│  ├─ schema.ts            # dekodery/walidatory zapisów + rejestr kluczy
+│  ├─ nav.ts               # definicja zakładek
+│  ├─ notify.ts            # powiadomienia systemowe (bez wyjątków na Safari)
+│  ├─ useMediaQuery.ts     # reaktywny prefers-color-scheme
 │  ├─ data.ts              # typy, dane domyślne, oceny, daty, cytaty
 │  ├─ schedule.ts          # logika „jaka lekcja teraz”
-│  ├─ useTimer.ts          # timer Pomodoro
+│  ├─ useTimer.ts          # timer Pomodoro z zapisem stanu
 │  ├─ audio.ts             # syntezator dźwięków tła (Web Audio API)
+│  ├─ logic.test.ts        # testy jednostkowe
 │  └─ color.ts / confetti.ts
 └─ utils/cn.ts
 ```
@@ -87,10 +94,22 @@ src/
 
 - Wszystko trzymane jest **wyłącznie lokalnie** w `localStorage` pod prefiksem `plecak:` (m.in. `tasks`, `subjects`, `timetable`, `cards`, `sessions`, `theme`).
 - Brak backendu, brak analityki, brak kont. Oceny nie opuszczają urządzenia.
-- **Uwaga:** wyczyszczenie danych witryny usuwa wszystko bezpowrotnie. Eksport/import kopii zapasowej jest jednym z pierwszych punktów w [REVIEW.md](./REVIEW.md).
+- **Kopia zapasowa:** przycisk „Twoje dane” (sidebar lub stopka) → eksport do pliku JSON i import na innym urządzeniu. Import zastępuje obecne dane i pomija nieznane sekcje.
+- **Ochrona:** aplikacja prosi o *trwałe przechowywanie* (`navigator.storage.persist`), a każde odczytanie danych przechodzi walidację — uszkodzony zapis jest naprawiany lub zastępowany wartością domyślną zamiast wywalać interfejs.
+- **Awaria:** globalny `ErrorBoundary` pozwala pobrać kopię danych jeszcze przed czyszczeniem.
 - Jedyny zewnętrzny request to czcionki z Google Fonts.
 
 ---
+
+## 🧪 Testy
+
+```bash
+npm test          # 38 testów jednostkowych
+```
+
+Testy pokrywają logikę, która najłatwiej psuje się po cichu: skalę ocen z plusami/minusami, średnią ważoną i progi oceny końcowej, polską odmianę liczebników, status lekcji (weekend / przed / lekcja / przerwa / po), kalendarz szkolny oraz dekodery danych ze schowka (m.in. normalizację planu do 5 × 8 i odrzucanie uszkodzonych wpisów).
+
+CI (`.github/workflows/ci.yml`) uruchamia `typecheck`, testy i build na każdym Pull Requeście.
 
 ## 📋 Stan projektu i plan rozwoju
 

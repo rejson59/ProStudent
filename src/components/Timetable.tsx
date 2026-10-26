@@ -1,11 +1,27 @@
 import { useMemo, useState } from "react";
 import { useLocal } from "../lib/store";
+import { decodeTimetable } from "../lib/schema";
 import { BELLS, DAYS, DAYS_SHORT, defaultTimetable, subjectColor } from "../lib/data";
 import { lessonStatus } from "../lib/schedule";
 import { Btn, CardTitle, PageHeader, SubjectDot } from "./ui";
 import { Icon } from "./Icon";
+import { useToast } from "./Toast";
 
-function Cell({ value, editing, onChange, active, past }: { value: string; editing: boolean; onChange: (v: string) => void; active: boolean; past: boolean }) {
+function Cell({
+  value,
+  editing,
+  onChange,
+  active,
+  past,
+  label,
+}: {
+  value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
+  active: boolean;
+  past: boolean;
+  label: string;
+}) {
   const color = subjectColor(value);
   if (editing)
     return (
@@ -14,6 +30,7 @@ function Cell({ value, editing, onChange, active, past }: { value: string; editi
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="—"
+        aria-label={label}
         className="w-full h-full min-h-[52px] rounded-xl px-3 text-sm bg-paper border border-dashed border-line focus:border-sage outline-none"
       />
     );
@@ -31,7 +48,8 @@ function Cell({ value, editing, onChange, active, past }: { value: string; editi
 }
 
 export function Timetable({ now }: { now: Date }) {
-  const [tt, setTt] = useLocal<string[][]>("timetable", defaultTimetable);
+  const toast = useToast();
+  const [tt, setTt] = useLocal<string[][]>("timetable", defaultTimetable, decodeTimetable);
   const [editing, setEditing] = useState(false);
   const dow = now.getDay();
   const todayIdx = dow >= 1 && dow <= 5 ? dow - 1 : -1;
@@ -63,11 +81,24 @@ export function Timetable({ now }: { now: Date }) {
       <PageHeader kicker="Tydzień w pigułce" title="Plan lekcji">
         <div className="flex gap-2">
           {editing && (
-            <Btn variant="ghost" onClick={() => confirm("Przywrócić przykładowy plan?") && setTt(defaultTimetable)}>
+            <Btn
+              variant="ghost"
+              onClick={() => {
+                const previous = tt.map((row) => [...row]);
+                setTt(defaultTimetable.map((row) => [...row]));
+                toast("Przywrócono przykładowy plan", {
+                  action: { label: "Cofnij", run: () => setTt(previous) },
+                });
+              }}
+            >
               Przywróć przykład
             </Btn>
           )}
-          <Btn variant={editing ? "solid" : "soft"} onClick={() => setEditing((e) => !e)}>
+          <Btn
+            variant={editing ? "solid" : "soft"}
+            onClick={() => setEditing((e) => !e)}
+            aria-pressed={editing}
+          >
             <Icon name={editing ? "check" : "edit"} className="w-4 h-4" /> {editing ? "Gotowe" : "Edytuj plan"}
           </Btn>
         </div>
@@ -94,7 +125,15 @@ export function Timetable({ now }: { now: Date }) {
                 {b[0]}–{b[1]}
               </div>
               {DAYS.map((_, d) => (
-                <Cell key={d} value={tt[d][l]} editing={editing} onChange={(v) => set(d, l, v)} active={d === todayIdx && l === activeLesson} past={isPast(d, l)} />
+                <Cell
+                  key={d}
+                  value={tt[d][l]}
+                  editing={editing}
+                  onChange={(v) => set(d, l, v)}
+                  active={d === todayIdx && l === activeLesson}
+                  past={isPast(d, l)}
+                  label={`${DAYS[d]}, ${l + 1}. lekcja (${b[0]}–${b[1]})`}
+                />
               ))}
             </div>
           ))}
@@ -118,7 +157,14 @@ export function Timetable({ now }: { now: Date }) {
                 <b className="text-ink">{l + 1}.</b> {b[0]}
               </div>
               <div className="flex-1">
-                <Cell value={tt[mobileDay][l]} editing={editing} onChange={(v) => set(mobileDay, l, v)} active={mobileDay === todayIdx && l === activeLesson} past={isPast(mobileDay, l)} />
+                <Cell
+                  value={tt[mobileDay][l]}
+                  editing={editing}
+                  onChange={(v) => set(mobileDay, l, v)}
+                  active={mobileDay === todayIdx && l === activeLesson}
+                  past={isPast(mobileDay, l)}
+                  label={`${DAYS[mobileDay]}, ${l + 1}. lekcja (${b[0]}–${b[1]})`}
+                />
               </div>
             </div>
           ))}

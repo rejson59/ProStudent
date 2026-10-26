@@ -3,6 +3,7 @@
 **Data przeglądu:** 26 października 2026
 **Zakres:** cały kod z `creative-student-website-design.zip` (31 plików, 22 pliki źródłowe, ~2 700 linii TS/TSX/CSS)
 **Stan wyjściowy:** `npm run typecheck` ✅ · `npm run build` ✅ (338,8 kB HTML, 102,5 kB gzip)
+**Stan po poprawkach:** `typecheck` ✅ · 38 testów ✅ · build 362,1 kB (109,5 kB gzip) ✅ — patrz „Status: poprawki wdrożone”
 
 ---
 
@@ -18,14 +19,63 @@ Największe ryzyko nie leży w kodzie UI, tylko w **warstwie danych**: wszystko 
 | --- | --- | --- |
 | Architektura i typy | 8/10 | Czytelny podział `components` / `lib`, `strict`, brak `any` |
 | UI / UX | 8,5/10 | Spójny system wizualny, świetne detale, dobra responsywność |
-| Odporność danych | 4/10 | Brak walidacji, migracji, backupu, limitu i obsługi błędów zapisu |
-| Dostępność | 5/10 | Kontrasty poniżej AA, brak etykiet, brak `role="dialog"`, brak `aria-live` |
+| Odporność danych | 4/10 → **9/10** | Walidacja, samonaprawa, kopia zapasowa, `ErrorBoundary` |
+| Dostępność | 5/10 → **8/10** | Kontrasty AA, etykiety, dialogi z pułapką focusa, `aria-live`, reduced motion |
 | Wydajność | 6,5/10 | Całe drzewo re-renderuje się co sekundę; ciężkie SVG bez memoizacji |
-| Bezpieczeństwo | 7/10 | Zero XSS-ów, zero trackingu, ale przestarzały Vite i zewnętrzne fonty |
-| Testy | 0/10 | Brak jakichkolwiek testów i lintera |
+| Bezpieczeństwo | 7/10 → **8/10** | Zero XSS-ów; Vite zaktualizowany, Dependabot; zostały zewnętrzne fonty |
+| Testy | 0/10 → **7/10** | 38 testów jednostkowych w CI; brakuje lintera i testów komponentów |
 | Higiena repo | 3/10 → **8/10** | Brak `.gitignore`, README i CI — dodane w tym PR |
 
-### 8 rzeczy do zrobienia najpierw
+### Status: poprawki wdrożone w kolejnym PR
+
+Wszystkie punkty P0 i większość P1 z tego raportu zostały naprawione. Kod z sekcji „Jak to działa” opisuje stan **przed** poprawkami — poniżej aktualny.
+
+| # | Problem | Status | Jak naprawiony |
+| --- | --- | --- | --- |
+| A | Brak walidacji `localStorage` | ✅ | `src/lib/schema.ts` — dekodery dla każdego klucza; `store.ts` waliduje przy odczycie, a znormalizowany zapis (np. plan 5×3 → 5×8) zapisuje z powrotem |
+| B | Brak kopii zapasowej | ✅ | Panel „Twoje dane”: eksport/import JSON, `storage.persist()`, licznik zajętości, pełny reset |
+| C | Brak `.gitignore` | ✅ | Dodane w pierwszym PR |
+| — | Brak `ErrorBoundary` | ✅ | `components/ErrorBoundary.tsx` — komunikat + pobranie danych + reset zamiast białego ekranu |
+| D | `mute()` wyciszał jeden dźwięk | ✅ | Nowy stan budowany raz, `ambient.set` dla każdego z czterech kanałów |
+| E | Brak synchronizacji między kartami | ✅ | Nasłuch natywnego zdarzenia `storage` + wspólny magazyn w pamięci |
+| F | Efekty uboczne w updaterze `setState` | ✅ | `store.ts` przepisany na `useSyncExternalStore`, zapis poza updaterem |
+| G | `new Notification()` mogło rzucić | ✅ | `lib/notify.ts` z `try/catch`, sprawdzeniem konstruktora i obsługą wyniku uprawnień |
+| H | Wyścig timerów toastów | ✅ | Jeden timer, `clearTimeout` przed nowym powiadomieniem, `aria-live` |
+| I | Timer nie przeżywał odświeżenia | ✅ | Stan w `localStorage` (`mode`, `endAt`, `left`, `cycles`), strażnik przed podwójnym zakończeniem, reset po >6 h |
+| J | `key={tab}` resetował stan zakładek | ✅ | `key` przeniesiony na wewnętrzny wrapper; filtr zadań, talia i kalkulator zapisywane w `localStorage` |
+| K | Usuwanie bez cofnięcia | ✅ | Toast „Cofnij” dla zadań, ocen, przedmiotów, fiszek i przywrócenia planu |
+| L | Stałe `id` w SVG | ✅ | `useId()` w `Sky` i `Garden`; usunięty nieużywany `moonmask` |
+| M | Losowe `id` danych domyślnych | ✅ | Dane domyślne zapisywane przy pierwszym odczycie — wszystkie komponenty widzą te same ID |
+| U | Twarde kolory motywu nocnego | ✅ | Karta „Myśl dnia” na ciemnym gradiencie (kontrast 5,85–8,44:1), etykieta „jutro” na `#7a5510` (5,66:1) |
+| W | Brak obsługi błędów `AudioContext` | ✅ | `context()` zwraca `null` zamiast rzucać; wszystkie metody tolerują brak audio |
+| X | Generowanie buforów w wątku głównym | ⏳ | Nadal w wątku głównym (koszt tylko przy pierwszym włączeniu dźwięku); kandydat na `OfflineAudioContext` |
+| P/Q/R | Listener fiszek, `setTimeout`, `pick()` bez guardu | ✅ | Zależności efektu, `clearTimeout` w cleanupie, `pick()` zwraca `undefined` dla pustej talii |
+| Y | `Btn` bez `type="button"` | ✅ | Domyślny `type="button"` (formularze wymagają jawnego `submit`) |
+| — | Brak testów i CI dla testów | ✅ | Vitest: 38 testów logiki i dekoderów; CI uruchamia `typecheck` + `test` + `build` |
+| — | Brak Dependabota | ✅ | `.github/dependabot.yml` (npm co tydzień, actions co miesiąc) |
+
+**Dostępność (sekcja 5):** `--color-muted` → `#6f6771` (4,76:1 na papierze, 5,25:1 na karcie), biały tekst na kolorach zastąpiony `--color-ink` (przycisk Start, „Umiem!”, ikony przełączników, paleta poleceń), awatary przedmiotów na tłach `color-mix`. Dodano: `aria-label` we wszystkich polach i suwakach, `aria-pressed` na przełącznikach, `role="dialog"` + `aria-modal` + pułapka focusa w palecie i panelu danych, `aria-live="polite"` dla powiadomień, widoczny `:focus-visible`, `color-scheme` dla natywnych kontrolek, globalny blok `prefers-reduced-motion`, link „Przejdź do treści”.
+
+**Weryfikacja po poprawkach:**
+
+```
+npm run typecheck   ✅
+npm test            ✅ 38 testów
+npm run build       ✅ dist/index.html 362,13 kB (109,51 kB gzip)
+npm audit           ⚠️ 1 low (esbuild / Windows dev server)
+```
+
+Dodatkowo przeprowadzono testy integracyjne w jsdom (poza repozytorium):
+
+- **renderowanie wszystkich 6 zakładek** — OK,
+- **22 przypadki uszkodzonych danych** (plan 5×3, `tasks: null`, `subjects: "x"`, zły motyw, nieznana zakładka…) — wcześniej biały ekran, teraz wszystkie renderują się poprawnie,
+- **testy klienckie** (montowanie, klikanie): dodawanie/usuwanie z „Cofnij”, zapis filtra, stabilność ID, wyciszanie czterech suwaków, start/pauza timera, odtworzenie timera po ponownym montowaniu, zakończenie sesji (kwiat + historia + brak podwójnego liczenia) — bez błędów w konsoli.
+
+**Świadomie poza zakresem tego PR:** edytowalne godziny dzwonków, PWA, kalendarz miesięczny, import planu z dziennika (sekcja 7). To zmiany produktowe, nie poprawki błędów.
+
+---
+
+### 8 rzeczy do zrobienia najpierw (stan pierwotny — dla historii)
 
 1. **Eksport / import kopii zapasowej (JSON)** — najtańsze ubezpieczenie od utraty danych. *(P0)*
 2. **Walidacja + wersjonowanie `localStorage` i `ErrorBoundary`** — żeby zły zapis nie kończył się białym ekranem. *(P0)*
