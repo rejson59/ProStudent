@@ -7,20 +7,36 @@ class Ambient {
   master: GainNode | null = null;
   chains: Partial<Record<SoundId, Chain>> = {};
 
-  ensure() {
-    if (!this.ctx) {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.9;
-      this.master.connect(this.ctx.destination);
+  /** Zwraca kontekst audio albo `null`, jeśli przeglądarka go nie wspiera / zablokowała. */
+  private context(): AudioContext | null {
+    try {
+      if (!this.ctx) {
+        const Ctor =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return null;
+        this.ctx = new Ctor();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.9;
+        this.master.connect(this.ctx.destination);
+      }
+      if (this.ctx.state === "suspended") {
+        // Autoplay policy: obietnica może zostać odrzucona, gdy brak gestu użytkownika.
+        void this.ctx.resume().catch(() => {});
+      }
+      return this.ctx;
+    } catch {
+      return null;
     }
-    if (this.ctx.state === "suspended") void this.ctx.resume();
-    return this.ctx;
   }
 
-  noise(kind: "white" | "pink" | "brown", seconds = 5) {
-    const ctx = this.ensure();
+  ensure() {
+    return this.context();
+  }
+
+  noise(kind: "white" | "pink" | "brown", seconds = 5): AudioBuffer | null {
+    const ctx = this.context();
+    if (!ctx) return null;
     const len = ctx.sampleRate * seconds;
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
@@ -48,8 +64,9 @@ class Ambient {
     return buf;
   }
 
-  crackles(seconds = 7) {
-    const ctx = this.ensure();
+  crackles(seconds = 7): AudioBuffer | null {
+    const ctx = this.context();
+    if (!ctx) return null;
     const len = ctx.sampleRate * seconds;
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -65,19 +82,28 @@ class Ambient {
     return buf;
   }
 
-  build(id: SoundId): Chain {
-    const ctx = this.ensure();
+  build(id: SoundId): Chain | null {
+    const ctx = this.context();
+    if (!ctx || !this.master) return null;
     const out = ctx.createGain();
     out.gain.value = 0;
     out.connect(this.master!);
     const stops: (() => void)[] = [];
-    const src = (buf: AudioBuffer) => {
+    const src = (buf: AudioBuffer | null) => {
+      if (!buf) return null;
       const s = ctx.createBufferSource();
       s.buffer = buf;
       s.loop = true;
       s.start();
       stops.push(() => s.stop());
       return s;
+    };
+
+    const connect = (source: AudioNode | null, ...nodes: AudioNode[]) => {
+      if (!source) return false;
+      let node: AudioNode = source;
+      for (const next of nodes) node = node.connect(next);
+      return true;
     };
 
     if (id === "rain") {
@@ -88,20 +114,20 @@ class Ambient {
       const lp = ctx.createBiquadFilter();
       lp.type = "lowpass";
       lp.frequency.value = 6500;
-      s.connect(hp).connect(lp).connect(out);
+      connect(s, hp, lp, out);
       const drops = src(this.crackles(5));
       const dg = ctx.createGain();
       dg.gain.value = 0.25;
       const bp = ctx.createBiquadFilter();
       bp.type = "bandpass";
       bp.frequency.value = 3000;
-      drops.connect(bp).connect(dg).connect(out);
+      connect(drops, bp, dg, out);
     } else if (id === "brown") {
       const s = src(this.noise("brown"));
       const lp = ctx.createBiquadFilter();
       lp.type = "lowpass";
       lp.frequency.value = 600;
-      s.connect(lp).connect(out);
+      connect(s, lp, out);
     } else if (id === "waves") {
       const s = src(this.noise("pink"));
       const lp = ctx.createBiquadFilter();
@@ -116,7 +142,7 @@ class Ambient {
       lfo.connect(lfoG).connect(wg.gain);
       lfo.start();
       stops.push(() => lfo.stop());
-      s.connect(lp).connect(wg).connect(out);
+      connect(s, lp, wg, out);
     } else {
       const base = src(this.noise("brown"));
       const lp = ctx.createBiquadFilter();
@@ -124,14 +150,14 @@ class Ambient {
       lp.frequency.value = 350;
       const bg = ctx.createGain();
       bg.gain.value = 0.6;
-      base.connect(lp).connect(bg).connect(out);
+      connect(base, lp, bg, out);
       const c = src(this.crackles());
       const hp = ctx.createBiquadFilter();
       hp.type = "highpass";
       hp.frequency.value = 1200;
       const cg = ctx.createGain();
       cg.gain.value = 0.7;
-      c.connect(hp).connect(cg).connect(out);
+      connect(c, hp, cg, out);
     }
 
     return {
@@ -144,7 +170,8 @@ class Ambient {
   }
 
   set(id: SoundId, volume: number) {
-    const ctx = this.ensure();
+    const ctx = this.context();
+    if (!ctx) return;
     let chain = this.chains[id];
     if (volume <= 0) {
       if (chain) {
@@ -156,14 +183,17 @@ class Ambient {
       return;
     }
     if (!chain) {
-      chain = this.build(id);
+      const built = this.build(id);
+      if (!built) return;
+      chain = built;
       this.chains[id] = chain;
     }
     chain.gain.gain.setTargetAtTime(volume * 0.9, ctx.currentTime, 0.3);
   }
 
   chime() {
-    const ctx = this.ensure();
+    const ctx = this.context();
+    if (!ctx || !this.master) return;
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
