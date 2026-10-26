@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@custom-variant night (&:where(.night, .night *));
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --color-paper: #f5efe4;
+  --color-card: #fffaf3;
+  --color-ink: #2d2a32;
+  --color-muted: #847c86;
+  --color-line: #eae0cf;
+  --color-sage: #6f9f7e;
+  --color-clay: #e07a5f;
+  --color-butter: #eebc55;
+  --color-lav: #8f8ad4;
+  --color-sky: #5f9fd6;
+  --color-rose: #e3879a;
+}
+
+.night {
+  --color-paper: #121420;
+  --color-card: #1a1d2c;
+  --color-ink: #ece8f1;
+  --color-muted: #9893aa;
+  --color-line: #2a2e43;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+body {
+  background-image: radial-gradient(color-mix(in oklab, var(--color-ink) 7%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-butter) 55%, transparent);
+}
+
+@layer components {
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-ink) 4%, transparent),
+    0 12px 30px -18px color-mix(in oklab, var(--color-ink) 25%, transparent);
+  transition: background-color 0.6s ease, border-color 0.6s ease;
+}
+
+.input {
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: var(--color-ink);
+}
+.input:focus {
+  border-color: var(--color-sage);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-sage) 20%, transparent);
+}
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@keyframes drift {
+  from { left: -25%; }
+  to { left: 110%; }
+}
+.drift { animation: drift linear infinite; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+.twinkle { animation: twinkle ease-in-out infinite; }
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+.sway { animation: sway ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+
+@keyframes sprout {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.sprout { animation: sprout 0.9s cubic-bezier(0.3, 1.6, 0.5, 1) both; transform-box: fill-box; transform-origin: bottom center; }
+
+.flip { perspective: 1200px; }
+.flip-inner { transition: transform 0.6s cubic-bezier(0.3, 1.3, 0.5, 1); transform-style: preserve-3d; }
+.flip-inner.flipped { transform: rotateY(180deg); }
+.face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.face-back { transform: rotateY(180deg); }
+
+input[type="range"] { accent-color: var(--color-sage); }
+
+.scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
