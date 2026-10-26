@@ -69,6 +69,19 @@ Bardzo dobre decyzje:
 
 `src/lib/store.ts:5-15` robi tylko `JSON.parse` i rzutowanie `as T`. Jeśli w pamięci znajdzie się poprawny JSON o złym kształcie, aplikacja się wywala. Konkretny przykład: `src/components/Timetable.tsx:9` wywołuje `subjectColor(value)`, a `value` pochodzi z `tt[d][l]` (`:97`). Gdy zapisany plan ma krótszy wiersz niż 8 lekcji, `value` jest `undefined`, a `subjectColor` w `data.ts:94` robi `name.trim()` → `TypeError` i cały ekran planu znika. Ten sam problem dotknie każdą przyszłą zmianę struktury (np. dodanie `id` do lekcji).
 
+**Potwierdzone empirycznie** (renderowanie w jsdom z podstawionymi danymi w `localStorage`):
+
+| Zapis w `localStorage` | Wynik |
+| --- | --- |
+| dane domyślne (5×8) | ✅ renderuje się |
+| `timetable` = 5 wierszy × 3 lekcje | 💥 `Cannot read properties of undefined (reading 'trim')` |
+| `timetable` = `"zepsute"` | 💥 `row.map is not a function` |
+| `tasks` = obiekt | 💥 `tasks.filter is not a function` |
+| `tasks` = `null` | 💥 `Cannot read properties of null (reading 'filter')` |
+| `subjects` = `"x"` | 💥 `subjects.map is not a function` |
+
+Każdy z tych przypadków to dziś **biały ekran bez komunikatu** — i każdy może się zdarzyć przy przyszłej zmianie formatu danych, ręcznej edycji `localStorage` w DevTools albo nieudanym imporcie.
+
 **Fix (szkic):**
 
 ```ts
@@ -424,6 +437,14 @@ npm run typecheck   # ✅ bez błędów
 npm run build       # ✅ dist/index.html, 338,82 kB (102,51 kB gzip)
 npm audit           # ⚠️ 1 low (esbuild, dev server na Windows) — bez wpływu na produkcję
 ```
+
+Dodatkowo przeprowadzono dymny test renderowania (React `renderToString` + jsdom + `vite.ssrLoadModule`) dla wszystkich sześciu zakładek na danych domyślnych:
+
+```
+OK  home    OK  plan    OK  tasks    OK  grades    OK  focus    OK  cards
+```
+
+Wszystkie zakładki renderują się poprawnie na poprawnych danych — problem z sekcji 3.1 A dotyczy wyłącznie danych uszkodzonych lub w starym formacie.
 
 ---
 
