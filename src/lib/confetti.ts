@@ -17,18 +17,30 @@ export function confetti(x: number, y: number, count = 28) {
       zIndex: "9999",
     } as CSSStyleDeclaration);
     document.body.appendChild(el);
+
+    // Web Animations API nie istnieje w starszych Safari i części WebView.
+    // Wcześniej brak `element.animate` kończył się wyjątkiem i przerywał akcję.
+    if (typeof el.animate !== "function") {
+      el.remove();
+      return;
+    }
+
     const angle = Math.random() * Math.PI * 2;
     const v = 60 + Math.random() * 120;
     const dx = Math.cos(angle) * v;
     const dy = Math.sin(angle) * v - 80;
-    const anim = el.animate(
-      [
-        { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
-        { transform: `translate(${dx}px, ${dy + 160}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
-      ],
-      { duration: 900 + Math.random() * 600, easing: "cubic-bezier(.2,.7,.4,1)" }
-    );
-    anim.onfinish = () => el.remove();
+    try {
+      const anim = el.animate(
+        [
+          { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
+          { transform: `translate(${dx}px, ${dy + 160}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
+        ],
+        { duration: 900 + Math.random() * 600, easing: "cubic-bezier(.2,.7,.4,1)" }
+      );
+      anim.onfinish = () => el.remove();
+    } catch {
+      el.remove();
+    }
   }
 }
 

@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocal } from "../lib/store";
+import { decodeCards, decodeDeck } from "../lib/schema";
 import { defaultCards, subjectColor, uid, type Card } from "../lib/data";
 import { confetti } from "../lib/confetti";
 import { Btn, CardTitle, PageHeader } from "./ui";
 import { Icon } from "./Icon";
+import { useToast } from "./Toast";
 
-function pick(cards: Card[], avoid?: string) {
+/** Losuje fiszkę z wagą 2^(5 - box). Zwraca `undefined` dla pustej talii. */
+function pick(cards: Card[], avoid?: string): Card | undefined {
+  if (!cards.length) return undefined;
   const pool = cards.length > 1 ? cards.filter((c) => c.id !== avoid) : cards;
+  if (!pool.length) return cards[0];
   const weights = pool.map((c) => Math.pow(2, 5 - c.box));
   let r = Math.random() * weights.reduce((a, b) => a + b, 0);
   for (let i = 0; i < pool.length; i++) {
@@ -17,19 +22,25 @@ function pick(cards: Card[], avoid?: string) {
 }
 
 export function Flashcards() {
-  const [cards, setCards] = useLocal<Card[]>("cards", defaultCards);
+  const toast = useToast();
+  const [cards, setCards] = useLocal<Card[]>("cards", defaultCards, decodeCards);
   const decks = useMemo(() => Array.from(new Set(cards.map((c) => c.deck))), [cards]);
-  const [deck, setDeck] = useState<string>("Wszystkie");
+  // Wybrana talia przeżywa przejście na inną zakładkę.
+  const [storedDeck, setDeck] = useLocal<string>("cardsDeck", "Wszystkie", decodeDeck);
+  const deck = storedDeck === "Wszystkie" || decks.includes(storedDeck) ? storedDeck : "Wszystkie";
   const inDeck = useMemo(() => (deck === "Wszystkie" ? cards : cards.filter((c) => c.deck === deck)), [cards, deck]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [streak, setStreak] = useState(0);
   const [form, setForm] = useState({ deck: decks[0] ?? "", front: "", back: "" });
+  const nextTimer = useRef<number | null>(null);
 
   const current = inDeck.find((c) => c.id === currentId) ?? null;
 
   useEffect(() => {
-    if (!current && inDeck.length) setCurrentId(pick(inDeck).id);
+    if (current || !inDeck.length) return;
+    const next = pick(inDeck);
+    if (next) setCurrentId(next.id);
   }, [current, inDeck]);
 
   const answer = (ok: boolean) => {
@@ -41,22 +52,39 @@ export function Flashcards() {
     if (ok && s > 0 && s % 5 === 0) confetti(window.innerWidth / 2, window.innerHeight / 2.5, 40);
     setFlipped(false);
     const pool = deck === "Wszystkie" ? updated : updated.filter((c) => c.deck === deck);
-    setTimeout(() => setCurrentId(pick(pool, current.id).id), 180);
+    if (nextTimer.current != null) window.clearTimeout(nextTimer.current);
+    nextTimer.current = window.setTimeout(() => {
+      nextTimer.current = null;
+      const next = pick(pool, current.id);
+      setCurrentId(next ? next.id : null);
+    }, 180);
   };
 
+  const answerRef = useRef(answer);
+  answerRef.current = answer;
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
       if (e.code === "Space") {
         e.preventDefault();
         setFlipped((f) => !f);
       }
-      if (flipped && e.key === "ArrowRight") answer(true);
-      if (flipped && e.key === "ArrowLeft") answer(false);
+      if (flipped && e.key === "ArrowRight") answerRef.current(true);
+      if (flipped && e.key === "ArrowLeft") answerRef.current(false);
     };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  });
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [flipped]);
+
+  // Sprzątanie odroczonej zmiany karty przy odmontowaniu zakładki.
+  useEffect(
+    () => () => {
+      if (nextTimer.current != null) window.clearTimeout(nextTimer.current);
+    },
+    []
+  );
 
   const boxes = [1, 2, 3, 4, 5].map((b) => inDeck.filter((c) => c.box === b).length);
   const mastery = inDeck.length ? inDeck.reduce((a, c) => a + (c.box - 1), 0) / (inDeck.length * 4) : 0;
@@ -108,7 +136,7 @@ export function Flashcards() {
                 <button onClick={() => answer(false)} className="flex-1 max-w-56 py-3.5 rounded-2xl font-semibold bg-clay/15 text-clay hover:bg-clay/25 transition cursor-pointer">
                   ← Jeszcze nie
                 </button>
-                <button onClick={() => answer(true)} className="flex-1 max-w-56 py-3.5 rounded-2xl font-semibold bg-sage text-white hover:opacity-90 transition cursor-pointer">
+                <button onClick={() => answer(true)} className="flex-1 max-w-56 py-3.5 rounded-2xl font-semibold bg-sage text-[var(--color-ink)] hover:opacity-90 transition cursor-pointer">
                   Umiem! →
                 </button>
               </div>
@@ -165,14 +193,33 @@ export function Flashcards() {
             style={{ animationDelay: ".1s" }}
           >
             <CardTitle icon={<Icon name="plus" className="w-4 h-4" />}>Nowa fiszka</CardTitle>
-            <input list="decks" value={form.deck} onChange={(e) => setForm({ ...form, deck: e.target.value })} placeholder="Talia (np. Angielski)" className="input w-full" />
+            <input
+              list="decks"
+              value={form.deck}
+              onChange={(e) => setForm({ ...form, deck: e.target.value })}
+              placeholder="Talia (np. Angielski)"
+              aria-label="Talia fiszki"
+              className="input w-full"
+            />
             <datalist id="decks">
               {decks.map((d) => (
                 <option key={d} value={d} />
               ))}
             </datalist>
-            <input value={form.front} onChange={(e) => setForm({ ...form, front: e.target.value })} placeholder="Przód – pytanie" className="input w-full" />
-            <input value={form.back} onChange={(e) => setForm({ ...form, back: e.target.value })} placeholder="Tył – odpowiedź" className="input w-full" />
+            <input
+              value={form.front}
+              onChange={(e) => setForm({ ...form, front: e.target.value })}
+              placeholder="Przód – pytanie"
+              aria-label="Przód fiszki (pytanie)"
+              className="input w-full"
+            />
+            <input
+              value={form.back}
+              onChange={(e) => setForm({ ...form, back: e.target.value })}
+              placeholder="Tył – odpowiedź"
+              aria-label="Tył fiszki (odpowiedź)"
+              className="input w-full"
+            />
             <Btn type="submit" className="w-full" disabled={!form.front.trim() || !form.back.trim()}>
               Dodaj fiszkę
             </Btn>
@@ -181,9 +228,23 @@ export function Flashcards() {
           {current && (
             <button
               onClick={() => {
-                setCards((c) => c.filter((x) => x.id !== current.id));
+                const removed = current;
+                const index = cards.findIndex((x) => x.id === removed.id);
+                setCards((c) => c.filter((x) => x.id !== removed.id));
                 setCurrentId(null);
                 setFlipped(false);
+                toast(`Usunięto fiszkę „${removed.front}”`, {
+                  action: {
+                    label: "Cofnij",
+                    run: () =>
+                      setCards((c) => {
+                        if (c.some((x) => x.id === removed.id)) return c;
+                        const next = [...c];
+                        next.splice(Math.min(index, next.length), 0, removed);
+                        return next;
+                      }),
+                  },
+                });
               }}
               className="text-xs text-muted hover:text-clay self-center flex items-center gap-1.5 cursor-pointer"
             >

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useLocal } from "../lib/store";
+import { decodeTasks, decodeTasksFilter, decodeTimetable } from "../lib/schema";
 import { addDays, dateISO, daysUntil, defaultTasks, defaultTimetable, relDay, subjectColor, uid, type Kind, type Task } from "../lib/data";
 import { confettiFrom } from "../lib/confetti";
 import { Btn, PageHeader, SubjectDot } from "./ui";
 import { Icon } from "./Icon";
+import { useToast } from "./Toast";
 
 const KINDS: { id: Kind; emoji: string; color: string }[] = [
   { id: "zadanie", emoji: "📝", color: "var(--color-sky)" },
@@ -24,10 +26,12 @@ function groupOf(t: Task) {
 const ORDER = ["Zaległe", "Dziś", "Jutro", "W tym tygodniu", "Później"];
 
 export function Tasks() {
-  const [tasks, setTasks] = useLocal<Task[]>("tasks", defaultTasks);
-  const [tt] = useLocal<string[][]>("timetable", defaultTimetable);
+  const toast = useToast();
+  const [tasks, setTasks] = useLocal<Task[]>("tasks", defaultTasks, decodeTasks);
+  const [tt] = useLocal<string[][]>("timetable", defaultTimetable, decodeTimetable);
   const subjects = useMemo(() => Array.from(new Set(tt.flat().filter(Boolean))).sort(), [tt]);
-  const [filter, setFilter] = useState<"todo" | "done" | "all">("todo");
+  // Filtr jest zapamiętywany — wcześniej powrót na zakładkę zawsze resetował go do „Do zrobienia”.
+  const [filter, setFilter] = useLocal<"todo" | "done" | "all">("tasksFilter", "todo", decodeTasksFilter);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(subjects[0] ?? "");
   const [due, setDue] = useState(dateISO(addDays(new Date(), 1)));
@@ -45,7 +49,24 @@ export function Tasks() {
     if (t && !t.done) confettiFrom(el);
     setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
   };
-  const remove = (id: string) => setTasks((ts) => ts.filter((x) => x.id !== id));
+  const remove = (id: string) => {
+    const index = tasks.findIndex((task) => task.id === id);
+    const removed = tasks[index];
+    if (!removed) return;
+    setTasks((ts) => ts.filter((x) => x.id !== id));
+    toast(`Usunięto: „${removed.title}”`, {
+      action: {
+        label: "Cofnij",
+        run: () =>
+          setTasks((ts) => {
+            if (ts.some((x) => x.id === removed.id)) return ts;
+            const next = [...ts];
+            next.splice(Math.min(index, next.length), 0, removed);
+            return next;
+          }),
+      },
+    });
+  };
 
   const visible = tasks.filter((t) => (filter === "all" ? true : filter === "done" ? t.done : !t.done)).sort((a, b) => a.due.localeCompare(b.due));
   const groups = filter === "done" ? [["Zrobione", visible] as const] : ORDER.map((g) => [g, visible.filter((t) => groupOf(t) === g)] as const).filter(([, l]) => l.length);
@@ -66,7 +87,12 @@ export function Tasks() {
               ["all", "Wszystkie"],
             ] as const
           ).map(([id, label]) => (
-            <button key={id} onClick={() => setFilter(id)} className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition cursor-pointer ${filter === id ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}>
+            <button
+              key={id}
+              onClick={() => setFilter(id)}
+              aria-pressed={filter === id}
+              className={`px-3.5 py-2 rounded-xl text-sm font-semibold transition cursor-pointer ${filter === id ? "bg-card shadow-sm" : "text-muted hover:text-ink"}`}
+            >
               {label}
             </button>
           ))}
@@ -90,15 +116,34 @@ export function Tasks() {
 
       <form onSubmit={add} className="card p-4 md:p-5 mb-6 rise">
         <div className="flex flex-col md:flex-row gap-3">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Co trzeba zrobić? np. „Zad. 5 str. 87”" className="input flex-1" />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Co trzeba zrobić? np. „Zad. 5 str. 87”"
+            aria-label="Treść zadania"
+            className="input flex-1"
+          />
           <div className="flex gap-3">
-            <input list="task-subjects" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Przedmiot" className="input w-full md:w-40" />
+            <input
+              list="task-subjects"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Przedmiot"
+              aria-label="Przedmiot"
+              className="input w-full md:w-40"
+            />
             <datalist id="task-subjects">
               {subjects.map((s) => (
                 <option key={s} value={s} />
               ))}
             </datalist>
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="input" />
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              aria-label="Termin zadania"
+              className="input"
+            />
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
@@ -108,6 +153,7 @@ export function Tasks() {
                 type="button"
                 key={k.id}
                 onClick={() => setKind(k.id)}
+                aria-pressed={kind === k.id}
                 className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition cursor-pointer ${kind === k.id ? "border-transparent" : "border-line text-muted hover:text-ink"}`}
                 style={kind === k.id ? { background: `color-mix(in oklab, ${k.color} 20%, transparent)`, color: `color-mix(in oklab, ${k.color} 75%, var(--color-ink))` } : {}}
               >
@@ -163,7 +209,11 @@ export function Tasks() {
                       <p className={`text-sm font-semibold ${!t.done && daysUntil(t.due) < 0 ? "text-clay" : ""}`}>{relDay(t.due)}</p>
                       <p className="text-[11px] text-muted">{new Date(t.due + "T00:00").toLocaleDateString("pl-PL", { weekday: "short", day: "numeric", month: "short" })}</p>
                     </div>
-                    <button onClick={() => remove(t.id)} className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted hover:text-clay p-1.5 rounded-lg transition cursor-pointer" aria-label="Usuń">
+                    <button
+                      onClick={() => remove(t.id)}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted hover:text-clay p-1.5 rounded-lg transition cursor-pointer"
+                      aria-label={`Usuń zadanie: ${t.title}`}
+                    >
                       <Icon name="trash" className="w-4 h-4" />
                     </button>
                   </li>

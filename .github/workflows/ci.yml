@@ -31,6 +31,9 @@ jobs:
       - name: Sprawdź typy
         run: npm run typecheck
 
+      - name: Testy jednostkowe
+        run: npm test
+
       - name: Zbuduj aplikację
         run: npm run build
 
