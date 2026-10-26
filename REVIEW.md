@@ -385,7 +385,7 @@ Uporządkowane według stosunku efektu do nakładu. Kolumna „Nakład” to ori
 | Linter | ❌ | ESLint 9 flat config + `eslint-plugin-react-hooks` + Prettier |
 | Licencja | ❌ | Decyzja właściciela; dla projektu publicznego MIT lub „all rights reserved” |
 | Dependabot | ❌ | `.github/dependabot.yml` (npm, weekly) |
-| GitHub Pages | ❌ | Workflow `deploy-pages` — build jest jednym plikiem HTML, więc wdrożenie jest trywialne |
+| GitHub Pages | ✅ | Dodano `.github/workflows/deploy.yml`; strona pod `https://rejson59.github.io/ProStudent/` |
 | ZIP w repo | ⚠️ | `creative-student-website-design.zip` (212 kB) duplikuje źródła; po scaleniu PR można usunąć |
 | Opis repo | ✅ | „Strona stworzona dla uczniów…” — warto dopisać technologię i link do demo |
 | Templates | ❌ | `PULL_REQUEST_TEMPLATE.md`, szablony issue (bug / pomysł) |
