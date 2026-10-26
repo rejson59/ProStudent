@@ -4,6 +4,8 @@
 
 > Nazwa „Plecak” to nazwa produktu widoczna w interfejsie. Repozytorium nazywa się ProStudent.
 
+**[▶ Otwórz aplikację](https://rejson59.github.io/ProStudent/)** — wersja online wdrażana automatycznie z `main` przez GitHub Pages.
+
 ---
 
 ## ✨ Co potrafi
