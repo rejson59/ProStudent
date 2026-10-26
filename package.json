@@ -1,12 +1,13 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "prostudent",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "clsx": "2.1.1",
@@ -22,7 +23,11 @@
     "@vitejs/plugin-react": "5.1.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.2",
+    "vite": "7.3.7",
     "vite-plugin-singlefile": "2.3.0"
+  },
+  "description": "Plecak – szkolne centrum dowodzenia: plan lekcji, zadania, oceny, timer fokusu i fiszki w jednej aplikacji.",
+  "engines": {
+    "node": ">=20.19"
   }
 }
