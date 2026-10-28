@@ -103,7 +103,9 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
     if (result.ok) {
       accept(result.snapshot, "lokalnego agenta");
     } else {
-      setError(`${result.error}. Uruchom \`npx plecak-sync serve\` w katalogu sync-agent.`);
+      setError(
+        `${result.error}. Uruchom agenta na tym komputerze: wejdź do katalogu sync-agent i wpisz \`node src/cli.mjs serve\` (jednorazowo: \`node src/cli.mjs login\`).`
+      );
     }
   }, [accept]);
 
