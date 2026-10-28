@@ -34,6 +34,10 @@ jobs:
       - name: Testy jednostkowe
         run: npm test
 
+      - name: Testy lokalnego agenta (sync-agent)
+        run: node --test
+        working-directory: sync-agent
+
       - name: Zbuduj aplikację
         run: npm run build
 

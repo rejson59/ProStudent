@@ -1,4 +1,4 @@
-import { BELLS, toMin } from "./data";
+import { BELLS, toMin, type Bells } from "./data";
 
 export type Status =
   | { state: "weekend" }
@@ -8,15 +8,17 @@ export type Status =
   | { state: "break"; prev: number; next: number; progress: number; minsLeft: number }
   | { state: "after" };
 
-export function lessonStatus(now: Date, timetable: string[][]): Status {
+export function lessonStatus(now: Date, timetable: string[][], bells: Bells = BELLS): Status {
   const d = now.getDay();
   if (d === 0 || d === 6) return { state: "weekend" };
   const row = timetable[d - 1] ?? [];
-  const idx = row.map((s, i) => (s.trim() ? i : -1)).filter((i) => i >= 0);
+  const idx = row
+    .map((cell, i) => (typeof cell === "string" && cell.trim() ? i : -1))
+    .filter((i) => i >= 0 && i < bells.length);
   if (!idx.length) return { state: "free" };
   const t = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const start = (i: number) => toMin(BELLS[i][0]);
-  const end = (i: number) => toMin(BELLS[i][1]);
+  const start = (i: number) => toMin(bells[i][0]);
+  const end = (i: number) => toMin(bells[i][1]);
 
   if (t < start(idx[0])) return { state: "before", next: idx[0], minsTo: Math.ceil(start(idx[0]) - t) };
   for (let k = 0; k < idx.length; k++) {

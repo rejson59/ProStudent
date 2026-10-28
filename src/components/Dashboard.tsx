@@ -4,7 +4,7 @@ import { Garden } from "./Garden";
 import { Icon } from "./Icon";
 import { Btn, CardTitle, Ring, SubjectDot } from "./ui";
 import { useLocal } from "../lib/store";
-import { decodeSubjects, decodeTasks, decodeText, decodeTimetable } from "../lib/schema";
+import { decodeBells, decodeSubjects, decodeTasks, decodeText, decodeTimetable } from "../lib/schema";
 import {
   BELLS,
   QUOTES,
@@ -19,6 +19,7 @@ import {
   schoolYearBounds,
   subjectColor,
   weightedAvg,
+  type Bells,
   type Session,
   type Subject,
   type Task,
@@ -44,10 +45,11 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
   const [tasks, setTasks] = useLocal<Task[]>("tasks", defaultTasks, decodeTasks);
   const [subjects] = useLocal<Subject[]>("subjects", defaultSubjects, decodeSubjects);
   const [note, setNote] = useLocal("quicknote", "", decodeText);
+  const [bells] = useLocal<Bells>("bells", BELLS, decodeBells);
 
   const { day } = skyInfo(now);
   const darkText = day > 0.55;
-  const status = lessonStatus(now, timetable);
+  const status = lessonStatus(now, timetable, bells);
   const dow = now.getDay();
   const todayRow = dow >= 1 && dow <= 5 ? timetable[dow - 1] : [];
 
@@ -147,7 +149,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
             <div className="flex items-center gap-3">
               <SubjectDot color={status.state === "lesson" ? subjectColor(todayRow[status.index]) : "var(--color-butter)"} className="w-3.5 h-3.5" />
               <div className="flex-1">
-                <p className="text-xs text-muted">{status.state === "lesson" ? `Lekcja ${status.index + 1} · ${BELLS[status.index].join("–")}` : "Przerwa"}</p>
+                <p className="text-xs text-muted">{status.state === "lesson" ? `Lekcja ${status.index + 1} · ${(bells[status.index] ?? []).join("–")}` : "Przerwa"}</p>
                 <p className="font-display text-2xl font-semibold">{status.state === "lesson" ? todayRow[status.index] : "Odetchnij 🍎"}</p>
               </div>
               <p className="text-right">
@@ -160,7 +162,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
             </div>
             {(status.state === "break" || status.next != null) && (
               <p className="text-sm text-muted mt-4">
-                Następnie: <b className="text-ink">{todayRow[status.state === "break" ? status.next : status.next!]}</b> o {BELLS[status.state === "break" ? status.next : status.next!][0]}
+                Następnie: <b className="text-ink">{todayRow[status.state === "break" ? status.next : status.next!]}</b> o {bells[status.state === "break" ? status.next : status.next!]?.[0] ?? "—"}
               </p>
             )}
             {status.state === "lesson" && status.next == null && <p className="text-sm text-muted mt-4">To ostatnia lekcja dzisiaj! 🎉</p>}
@@ -171,7 +173,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
             <p className="font-semibold">
               {status.state === "weekend" && "Weekend – brak lekcji"}
               {status.state === "free" && "Dziś bez lekcji"}
-              {status.state === "before" && `Start o ${BELLS[status.next][0]}`}
+              {status.state === "before" && `Start o ${bells[status.next]?.[0] ?? "—"}`}
               {status.state === "after" && "Koniec lekcji na dziś"}
             </p>
             <p className="text-sm text-muted mt-1">Plan na jutro znajdziesz w zakładce „Plan lekcji”.</p>
@@ -192,7 +194,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
                   key={i}
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition ${status.state === "lesson" && status.index === i ? "bg-sky/15 font-semibold" : ""} ${(status.state === "after" || (status.state === "lesson" && i < status.index) || (status.state === "break" && i <= status.prev)) ? "opacity-45" : ""}`}
                 >
-                  <span className="text-muted tabular-nums w-11 text-xs">{BELLS[i][0]}</span>
+                  <span className="text-muted tabular-nums w-11 text-xs">{bells[i]?.[0] ?? "—"}</span>
                   <SubjectDot color={subjectColor(s)} />
                   <span className="flex-1">{s}</span>
                   <span className="text-xs text-muted">{i + 1}</span>

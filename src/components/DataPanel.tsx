@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { DATA_DECODERS } from "../lib/schema";
+import { DATA_DECODERS, decodeText } from "../lib/schema";
+import { useLocal } from "../lib/store";
 import {
   DATA_VERSION,
   exportData,
@@ -25,11 +26,21 @@ function formatBytes(bytes: number) {
  * Do tej wersji nie było ŻADNEGO sposobu na przeniesienie lub odzyskanie danych —
  * wyczyszczenie witryny oznaczało utratę ocen, planu i fiszek.
  */
-export function DataPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function DataPanel({
+  open,
+  onClose,
+  onOpenJournal,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onOpenJournal: () => void;
+}) {
   const toast = useToast();
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [autoSync, setAutoSync] = useLocal<boolean>("journalAutoSync", false);
+  const [lastSync] = useLocal<string>("journalLastSync", "", decodeText);
   const [usage, setUsage] = useState<{ usage: number; quota: number } | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -146,6 +157,33 @@ export function DataPanel({ open, onClose }: { open: boolean; onClose: () => voi
         </p>
 
         <div className="space-y-3">
+          <div className="rounded-2xl border border-line p-4">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-xl grid place-items-center bg-sky/15 text-sky shrink-0">
+                <Icon name="reset" className="w-4 h-4" />
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">Import z e-dziennika</p>
+                <p className="text-xs text-muted">
+                  Oceny, plan lekcji i sprawdziany z dziennika — jednorazowo lub automatycznie z lokalnego agenta.
+                </p>
+              </div>
+              <Btn variant="soft" className="!px-3 shrink-0" onClick={onOpenJournal}>
+                Importuj
+              </Btn>
+            </div>
+            <label className="flex items-center gap-2 mt-3 text-xs text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSync}
+                onChange={(event) => setAutoSync(event.target.checked)}
+                className="w-4 h-4 accent-[var(--color-sage)]"
+              />
+              Synchronizuj automatycznie z lokalnym agentem
+              {lastSync ? ` (ostatnio: ${new Date(lastSync).toLocaleString("pl-PL")})` : ""}
+            </label>
+          </div>
+
           <div className="rounded-2xl border border-line p-4 flex items-center gap-3">
             <span className="w-9 h-9 rounded-xl grid place-items-center bg-sage/15 text-sage shrink-0">
               <Icon name="check" className="w-4 h-4" />

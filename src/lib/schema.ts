@@ -1,4 +1,4 @@
-import { BELLS, type Card, type Grade, type Kind, type Session, type Subject, type Task } from "./data";
+import { BELLS, type Bells, type Card, type Grade, type Kind, type Session, type Subject, type Task } from "./data";
 import type { Mode } from "./useTimer";
 import { TAB_IDS } from "./nav";
 
@@ -42,6 +42,24 @@ export const decodeText: Decoder<string> = (raw) => str(raw, 2000);
 
 export const decodeFocusLen: Decoder<number> = (raw) => num(raw, 1, 180);
 
+export const decodeBells: Decoder<Bells> = (raw) => {
+  if (!Array.isArray(raw)) return undefined;
+  const pad = (value: string) => {
+    const [h, m] = value.split(":");
+    return `${h.padStart(2, "0")}:${m}`;
+  };
+  const pairs = raw
+    .map((entry) => {
+      if (!Array.isArray(entry) || entry.length < 2) return undefined;
+      const [start, end] = entry;
+      if (typeof start !== "string" || typeof end !== "string") return undefined;
+      if (!/^\d{1,2}:\d{2}$/.test(start) || !/^\d{1,2}:\d{2}$/.test(end)) return undefined;
+      return [pad(start), pad(end)] as [string, string];
+    })
+    .filter((pair): pair is [string, string] => pair !== undefined);
+  return pairs.length ? pairs : undefined;
+};
+
 export const decodeTasksFilter: Decoder<"todo" | "done" | "all"> = (raw) =>
   raw === "todo" || raw === "done" || raw === "all" ? raw : undefined;
 
@@ -65,6 +83,8 @@ function decodeTask(raw: unknown): Task | undefined {
     due,
     kind,
     done: raw.done === true,
+    source: str(raw.source, 40),
+    externalId: str(raw.externalId, 200),
   };
 }
 
@@ -83,6 +103,8 @@ function decodeGrade(raw: unknown): Grade | undefined {
     value,
     weight: num(raw.weight, 0.5, 10) ?? 1,
     note: str(raw.note, 200) ?? "",
+    source: str(raw.source, 40),
+    externalId: str(raw.externalId, 200),
   };
 }
 
@@ -196,6 +218,7 @@ export const DATA_DECODERS: Record<string, Decoder<unknown>> = {
   quicknote: decodeText,
   tasks: decodeTasks,
   timetable: decodeTimetable,
+  bells: decodeBells,
   subjects: decodeSubjects,
   cards: decodeCards,
   sessions: decodeSessions,

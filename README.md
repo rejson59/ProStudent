@@ -20,6 +20,7 @@
 | **Fiszki** | Pudełka Leitnera, powtórki ważone, talie, sterowanie klawiaturą |
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
 | **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
+| **Dziennik** | Import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań domowych z **eduVULCAN** — z pliku, wklejenia albo automatycznie przez lokalnego agenta `sync-agent/` |
 | **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
 ---
@@ -97,17 +98,21 @@ src/
 - **Kopia zapasowa:** przycisk „Twoje dane” (sidebar lub stopka) → eksport do pliku JSON i import na innym urządzeniu. Import zastępuje obecne dane i pomija nieznane sekcje.
 - **Ochrona:** aplikacja prosi o *trwałe przechowywanie* (`navigator.storage.persist`), a każde odczytanie danych przechodzi walidację — uszkodzony zapis jest naprawiany lub zastępowany wartością domyślną zamiast wywalać interfejs.
 - **Awaria:** globalny `ErrorBoundary` pozwala pobrać kopię danych jeszcze przed czyszczeniem.
-- Jedyny zewnętrzny request to czcionki z Google Fonts.
+- **Import z e-dziennika:** dane pobiera mały agent na Twoim komputerze (`sync-agent/`), a aplikacja tylko czyta gotowy plik z `http://127.0.0.1:8787`. Hasło nigdy nie trafia do przeglądarki, klucz parowania zostaje na dysku (`sync-agent/data/`, w `.gitignore`). Szczegóły i ograniczenia: [IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md).
+- Jedyny zewnętrzny request (poza lokalnym agentem) to czcionki z Google Fonts.
 
 ---
 
 ## 🧪 Testy
 
 ```bash
-npm test          # 38 testów jednostkowych
+npm test                      # 57 testów aplikacji (Vitest)
+node --test                    # 22 testy agenta (w katalogu sync-agent/)
 ```
 
-Testy pokrywają logikę, która najłatwiej psuje się po cichu: skalę ocen z plusami/minusami, średnią ważoną i progi oceny końcowej, polską odmianę liczebników, status lekcji (weekend / przed / lekcja / przerwa / po), kalendarz szkolny oraz dekodery danych ze schowka (m.in. normalizację planu do 5 × 8 i odrzucanie uszkodzonych wpisów).
+Testy agenta sprawdzają podpis RSA żądań (weryfikowany kluczem z certyfikatu), generowanie certyfikatu X.509, mapowanie odpowiedzi dziennika, CORS i lokalny serwer oraz odporność synchronizacji na częściowe błędy.
+
+Testy aplikacji pokrywają logikę, która najłatwiej psuje się po cichu: skalę ocen z plusami/minusami, średnią ważoną i progi oceny końcowej, polską odmianę liczebników, status lekcji (weekend / przed / lekcja / przerwa / po), kalendarz szkolny oraz dekodery danych ze schowka (m.in. normalizację planu do 5 × 8 i odrzucanie uszkodzonych wpisów).
 
 CI (`.github/workflows/ci.yml`) uruchamia `typecheck`, testy i build na każdym Pull Requeście.
 
@@ -116,7 +121,8 @@ CI (`.github/workflows/ci.yml`) uruchamia `typecheck`, testy i build na każdym 
 Projekt jest funkcjonalny i przechodzi `typecheck` + testy + `build`.
 
 - **[REVIEW.md](./REVIEW.md)** — audyt: błędy, dostępność, wydajność, pomysły produktowe, roadmapa.
-- **[IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md)** — propozycja importu ocen, planu i zadań z e-dziennika (Vulcan / eduVULCAN / Librus).
+- **[IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md)** — import z eduVULCAN: parowanie urządzenia, format `plecak-import-v1`, zasady scalania, ograniczenia i plan awaryjny.
+- **[sync-agent/README.md](./sync-agent/README.md)** — instrukcja agenta synchronizacji (`login`, `sync`, `serve`, `status`).
 
 ---
 
