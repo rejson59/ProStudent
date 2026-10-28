@@ -50,3 +50,7 @@ coverage
 # Lokalne pliki tymczasowe
 *.tmp
 *.bak
+
+# Agent synchronizacji — dane prywatne (klucz parowania, snapshoty dziennika)
+sync-agent/data/
+sync-agent/node_modules/

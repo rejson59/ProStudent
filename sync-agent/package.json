@@ -1,0 +1,21 @@
+{
+  "name": "plecak-sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lokalny agent synchronizacji Plecaka z dziennikiem eduVULCAN (dane nie opuszczają komputera).",
+  "type": "module",
+  "bin": {
+    "plecak-sync": "./src/cli.mjs"
+  },
+  "scripts": {
+    "start": "node src/cli.mjs serve",
+    "login": "node src/cli.mjs login",
+    "sync": "node src/cli.mjs sync",
+    "status": "node src/cli.mjs status",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

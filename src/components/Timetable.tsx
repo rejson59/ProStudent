@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocal } from "../lib/store";
-import { decodeTimetable } from "../lib/schema";
-import { BELLS, DAYS, DAYS_SHORT, defaultTimetable, subjectColor } from "../lib/data";
+import { decodeBells, decodeTimetable } from "../lib/schema";
+import { BELLS, DAYS, DAYS_SHORT, defaultTimetable, subjectColor, type Bells } from "../lib/data";
 import { lessonStatus } from "../lib/schedule";
 import { Btn, CardTitle, PageHeader, SubjectDot } from "./ui";
 import { Icon } from "./Icon";
@@ -50,6 +50,7 @@ function Cell({
 export function Timetable({ now }: { now: Date }) {
   const toast = useToast();
   const [tt, setTt] = useLocal<string[][]>("timetable", defaultTimetable, decodeTimetable);
+  const [bells] = useLocal<Bells>("bells", BELLS, decodeBells);
   const [editing, setEditing] = useState(false);
   const dow = now.getDay();
   const todayIdx = dow >= 1 && dow <= 5 ? dow - 1 : -1;
@@ -118,7 +119,7 @@ export function Timetable({ now }: { now: Date }) {
               {d}
             </div>
           ))}
-          {BELLS.map((b, l) => (
+          {bells.map((b, l) => (
             <div key={l} className="contents">
               <div className={`flex flex-col justify-center text-xs tabular-nums pr-2 ${activeLesson === l ? "text-ink font-semibold" : "text-muted"}`}>
                 <span className="font-display text-base text-ink">{l + 1}.</span>
@@ -127,7 +128,7 @@ export function Timetable({ now }: { now: Date }) {
               {DAYS.map((_, d) => (
                 <Cell
                   key={d}
-                  value={tt[d][l]}
+                  value={tt[d]?.[l] ?? ""}
                   editing={editing}
                   onChange={(v) => set(d, l, v)}
                   active={d === todayIdx && l === activeLesson}
@@ -151,14 +152,14 @@ export function Timetable({ now }: { now: Date }) {
           ))}
         </div>
         <div className="card p-4 space-y-2">
-          {BELLS.map((b, l) => (
+          {bells.map((b, l) => (
             <div key={l} className="flex items-center gap-3">
               <div className="w-16 text-xs text-muted tabular-nums">
                 <b className="text-ink">{l + 1}.</b> {b[0]}
               </div>
               <div className="flex-1">
                 <Cell
-                  value={tt[mobileDay][l]}
+                  value={tt[mobileDay]?.[l] ?? ""}
                   editing={editing}
                   onChange={(v) => set(mobileDay, l, v)}
                   active={mobileDay === todayIdx && l === activeLesson}

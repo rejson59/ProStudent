@@ -1,13 +1,35 @@
 export type Kind = "zadanie" | "kartkówka" | "sprawdzian" | "projekt";
-export type Task = { id: string; title: string; subject: string; due: string; kind: Kind; done: boolean };
-export type Grade = { id: string; value: string; weight: number; note: string };
+export type Task = {
+  id: string;
+  title: string;
+  subject: string;
+  due: string;
+  kind: Kind;
+  done: boolean;
+  /** Skąd wpis pochodzi („manual” = dodany w aplikacji, inaczej adapter dziennika). */
+  source?: string;
+  /** Stabilny identyfikator w dzienniku — pozwala aktualizować zamiast duplikować. */
+  externalId?: string;
+};
+
+export type Grade = {
+  id: string;
+  value: string;
+  weight: number;
+  note: string;
+  source?: string;
+  externalId?: string;
+};
 export type Subject = { id: string; name: string; grades: Grade[] };
 export type Card = { id: string; deck: string; front: string; back: string; box: number };
 export type Session = { id: string; at: number; minutes: number; seed: number };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
-export const BELLS: [string, string][] = [
+export type Bells = [string, string][];
+
+/** Domyślne dzwonki. Import z dziennika może je zastąpić godzinami Twojej szkoły. */
+export const BELLS: Bells = [
   ["8:00", "8:45"],
   ["8:55", "9:40"],
   ["9:50", "10:35"],

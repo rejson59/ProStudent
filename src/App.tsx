@@ -7,11 +7,14 @@ import { Focus } from "./components/Focus";
 import { Flashcards } from "./components/Flashcards";
 import { CommandPalette, type Action } from "./components/CommandPalette";
 import { DataPanel } from "./components/DataPanel";
+import { JournalImport } from "./components/JournalImport";
 import { Icon } from "./components/Icon";
 import { useToast } from "./components/Toast";
 import { requestPersistence, useLocal, useNow } from "./lib/store";
 import { addDays, dateISO, defaultTasks, uid, type Session, type Task } from "./lib/data";
-import { decodeSessions, decodeTab, decodeTasks, decodeTheme } from "./lib/schema";
+import { decodeSessions, decodeTab, decodeTasks, decodeText, decodeTheme } from "./lib/schema";
+import { fetchAgentSnapshot } from "./lib/journal/agent";
+import { useJournal } from "./lib/journal/useJournal";
 import { TAB_IDS, TABS, type TabId } from "./lib/nav";
 import { fmt, MODE_LABEL, useFocusTimer, type Mode } from "./lib/useTimer";
 import { ambient } from "./lib/audio";
@@ -31,12 +34,53 @@ export default function App() {
   const [freshId, setFreshId] = useState<string>();
   const [palette, setPalette] = useState(false);
   const [dataPanel, setDataPanel] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [autoSync] = useLocal<boolean>("journalAutoSync", false);
+  const [lastSync, setLastSync] = useLocal("journalLastSync", "", decodeText);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
+  const journal = useJournal();
 
   // Poproś o trwałe przechowywanie danych (chroni przed automatycznym czyszczeniem).
   useEffect(() => {
     void requestPersistence();
   }, []);
+
+  /**
+   * Automatyczna synchronizacja z lokalnym agentem.
+   *
+   * Aplikacja nie zna danych logowania — pyta wyłącznie o gotowy plik
+   * `snapshot.json` wystawiony przez agenta na 127.0.0.1.
+   */
+  const syncFromAgent = useCallback(
+    async (silent: boolean) => {
+      const result = await fetchAgentSnapshot();
+      if (!result.ok) {
+        if (!silent) toast(`Nie udało się pobrać danych: ${result.error}`);
+        return;
+      }
+      const exportedAt = result.snapshot.exportedAt;
+      if (lastSync && exportedAt <= lastSync) return;
+
+      const { result: imported } = journal.apply(result.snapshot, { grades: true, timetable: true, tasks: true });
+      setLastSync(exportedAt);
+      const parts = [
+        imported.stats.gradesNew ? `+${imported.stats.gradesNew} ocen` : "",
+        imported.stats.exams + imported.stats.homework ? `+${imported.stats.exams + imported.stats.homework} zadań` : "",
+        imported.stats.lessons ? `${imported.stats.lessons} lekcji` : "",
+      ].filter(Boolean);
+      toast(parts.length ? `Zsynchronizowano: ${parts.join(", ")}` : "Dane z dziennika są aktualne");
+    },
+    [journal, lastSync, setLastSync, toast]
+  );
+
+  useEffect(() => {
+    if (!autoSync) return;
+    void syncFromAgent(true);
+    const timer = window.setInterval(() => void syncFromAgent(true), 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
+    // Celowo tylko przy zmianie przełącznika — `syncFromAgent` zmienia się razem z danymi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSync]);
 
   const onFinish = useCallback(
     (mode: Mode, minutes: number) => {
@@ -96,14 +140,14 @@ export default function App() {
         return;
       }
       const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (typeof target?.closest === "function" && target.closest("input, textarea, select, [contenteditable='true']")) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const index = Number(event.key);
-      if (index >= 1 && index <= TABS.length && !palette && !dataPanel) go(TABS[index - 1].id);
+      if (index >= 1 && index <= TABS.length && !palette && !dataPanel && !journalOpen) go(TABS[index - 1].id);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [go, palette, dataPanel]);
+  }, [go, palette, dataPanel, journalOpen]);
 
   const quickAdd = useCallback(
     (title: string) => {
@@ -152,6 +196,13 @@ export default function App() {
         icon: "rain",
         keywords: "dźwięk muzyka",
         run: () => ambient.set("rain", 0.5),
+      },
+      {
+        id: "journal",
+        label: "Import z e-dziennika",
+        icon: "reset",
+        keywords: "dziennik vulcan eduvulcan librus oceny plan import sync",
+        run: () => setJournalOpen(true),
       },
       {
         id: "data",
@@ -339,7 +390,8 @@ export default function App() {
       </nav>
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} actions={actions} onQuickAdd={quickAdd} />
-      <DataPanel open={dataPanel} onClose={() => setDataPanel(false)} />
+      <DataPanel open={dataPanel} onClose={() => setDataPanel(false)} onOpenJournal={() => { setDataPanel(false); setJournalOpen(true); }} />
+      <JournalImport open={journalOpen} onClose={() => setJournalOpen(false)} />
     </div>
   );
 }
