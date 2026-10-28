@@ -5,14 +5,64 @@ import { useToast } from "./Toast";
 import { useJournal } from "../lib/journal/useJournal";
 import { decodeSnapshot, type JournalSnapshot } from "../lib/journal/types";
 import type { ImportSelection } from "../lib/journal/normalize";
-import { agentStatus, fetchAgentSnapshot, type AgentStatus } from "../lib/journal/agent";
+import { AGENT_URL, agentStatus, fetchAgentSnapshot, type AgentStatus } from "../lib/journal/agent";
+import { copyText } from "../lib/clipboard";
 
 type Step = "source" | "preview";
 
 const STEPS: { id: Step; label: string }[] = [
-  { id: "source", label: "1. Źródło" },
+  { id: "source", label: "1. Połącz" },
   { id: "preview", label: "2. Podgląd" },
 ];
+
+const REPO = "https://github.com/rejson59/ProStudent/tree/main/sync-agent";
+
+const COMMANDS = {
+  login: "node src/cli.mjs login",
+  serve: "node src/cli.mjs serve",
+  enter: "cd sync-agent",
+};
+
+/** Wiersz z komendą do wklejenia w terminalu — z kopiowaniem jednym kliknięciem. */
+function Command({ value, hint }: { value: string; hint?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = useCallback(async () => {
+    const ok = await copyText(value);
+    setCopied(ok);
+    window.setTimeout(() => setCopied(false), 2000);
+  }, [value]);
+
+  return (
+    <div className="rounded-xl border border-line bg-paper overflow-hidden">
+      <div className="flex items-stretch">
+        <code className="flex-1 min-w-0 px-3 py-2 font-mono text-xs text-ink overflow-x-auto whitespace-nowrap scroll-thin">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={copy}
+          aria-label={`Kopiuj polecenie: ${value}`}
+          className="shrink-0 px-3 text-xs font-semibold text-sage hover:bg-sage/10 cursor-pointer border-l border-line"
+        >
+          {copied ? "Skopiowano" : "Kopiuj"}
+        </button>
+      </div>
+      {hint && <p className="px-3 py-2 text-xs text-muted border-t border-line/70">{hint}</p>}
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? "Skopiowano do schowka" : ""}
+      </span>
+    </div>
+  );
+}
+
+function StepNumber({ children }: { children: number | string }) {
+  return (
+    <span className="shrink-0 w-5 h-5 rounded-full bg-ink text-paper text-[11px] font-bold grid place-items-center">
+      {children}
+    </span>
+  );
+}
 
 export function JournalImport({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
@@ -26,8 +76,18 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<AgentStatus | null>(null);
+  const [checking, setChecking] = useState(false);
   const [selection, setSelection] = useState<ImportSelection>({ grades: true, timetable: true, tasks: true });
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
+
+  const refresh = useCallback(async () => {
+    setChecking(true);
+    const next = await agentStatus();
+    setStatus(next);
+    setChecking(false);
+    return next;
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -35,12 +95,14 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
     setSnapshot(null);
     setError(null);
     setPaste("");
+    setPasteOpen(false);
     setSelection({ grades: true, timetable: true, tasks: true });
-    void agentStatus().then(setStatus);
+    setStatus(null);
+    void refresh();
     const previous = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     return () => previous?.focus?.();
-  }, [open]);
+  }, [open, refresh]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,11 +165,10 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
     if (result.ok) {
       accept(result.snapshot, "lokalnego agenta");
     } else {
-      setError(
-        `${result.error}. Uruchom agenta na tym komputerze: wejdź do katalogu sync-agent i wpisz \`node src/cli.mjs serve\` (jednorazowo: \`node src/cli.mjs login\`).`
-      );
+      setError(`${result.error}. Sprawdź stan agenta powyżej.`);
+      void refresh();
     }
-  }, [accept]);
+  }, [accept, refresh]);
 
   const preview = useMemo(
     () => (snapshot ? journal.preview(snapshot, selection) : null),
@@ -135,24 +196,26 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   const canImport = preview && (selection.grades || selection.timetable || selection.tasks);
+  const online = status?.online === true;
+  const ready = online && status?.ok === true;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 pt-[8vh] md:pt-4 bg-[#121420]/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 pt-[6vh] md:pt-4 bg-[#121420]/40 backdrop-blur-sm"
       onMouseDown={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card !rounded-3xl w-full max-w-xl p-6 max-h-[85vh] overflow-auto scroll-thin rise"
+        className="card !rounded-3xl w-full max-w-xl p-6 max-h-[88vh] overflow-auto scroll-thin rise"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-1">
           <div>
             <p className="text-xs uppercase tracking-[.2em] font-semibold text-muted">Dziennik szkolny</p>
             <h2 id={titleId} className="font-display text-2xl font-semibold">
-              Import z e-dziennika
+              Połącz z eduVULCAN
             </h2>
           </div>
           <button
@@ -169,9 +232,7 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
           {STEPS.map((item) => (
             <li
               key={item.id}
-              className={`px-3 py-1.5 rounded-xl ${
-                step === item.id ? "bg-ink text-paper" : "bg-line/60 text-muted"
-              }`}
+              className={`px-3 py-1.5 rounded-xl ${step === item.id ? "bg-ink text-paper" : "bg-line/60 text-muted"}`}
             >
               {item.label}
             </li>
@@ -179,35 +240,131 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
         </ol>
 
         {step === "source" && (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-line p-4">
-              <p className="text-sm font-semibold mb-1">Lokalny agent (automatyczna synchronizacja)</p>
-              <p className="text-xs text-muted mb-3">
-                Jeśli masz uruchomiony agent na komputerze, pobierz dane jednym kliknięciem. Agent odświeża je sam
-                co kilka godzin.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Btn variant="soft" onClick={fromAgent} disabled={busy}>
-                  <Icon name="reset" className="w-4 h-4" /> Pobierz z agenta
-                </Btn>
-                <span className={`text-xs ${status?.online ? "text-sage" : "text-muted"}`}>
-                  {status === null
-                    ? "sprawdzam…"
-                    : status.online
-                    ? status.ok
-                      ? `agent online · ostatnia synchronizacja ${new Date(status.lastSync ?? "").toLocaleString("pl-PL")}`
-                      : "agent online, brak danych — zrób jednorazowe logowanie"
-                    : "agent nie wykryty"}
-                </span>
-              </div>
-            </div>
+          <div className="space-y-4">
+            {status === null && (
+              <p className="text-sm text-muted rounded-2xl border border-line p-4">Sprawdzam, czy agent działa…</p>
+            )}
 
+            {/* --- Agent działa i ma dane: najkrótsza ścieżka --- */}
+            {ready && (
+              <div className="rounded-2xl border border-sage/40 bg-sage/8 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sage" />
+                  <p className="text-sm font-semibold">Agent połączony</p>
+                </div>
+                <p className="text-xs text-muted mb-3">
+                  {status?.student ? `${status.student} · ` : ""}
+                  ostatnia synchronizacja:{" "}
+                  {status?.lastSync ? new Date(status.lastSync).toLocaleString("pl-PL") : "—"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Btn onClick={fromAgent} disabled={busy}>
+                    <Icon name="reset" className="w-4 h-4" /> Pobierz dane z dziennika
+                  </Btn>
+                  <Btn variant="ghost" onClick={() => void refresh()} disabled={checking}>
+                    Odśwież status
+                  </Btn>
+                </div>
+              </div>
+            )}
+
+            {/* --- Agent działa, ale nie ma jeszcze danych --- */}
+            {online && !ready && (
+              <div className="rounded-2xl border border-butter/60 bg-butter/10 p-4">
+                <p className="text-sm font-semibold mb-1">Agent działa, brakuje jednorazowego logowania</p>
+                <p className="text-xs text-muted mb-3">
+                  W katalogu <code>sync-agent</code> uruchom poniższe polecenie. Otworzy się eduVULCAN — zaloguj się,
+                  wejdź na <code>https://eduvulcan.pl/api/ap</code> i wklej zawartość strony w terminalu.
+                </p>
+                <Command value={COMMANDS.login} hint="Hasło zostaje tylko u Ciebie — agent nie zapisuje go nigdzie." />
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Btn variant="soft" onClick={() => void refresh()} disabled={checking}>
+                    <Icon name="reset" className="w-4 h-4" /> Sprawdź ponownie
+                  </Btn>
+                </div>
+              </div>
+            )}
+
+            {/* --- Agent nie działa: instrukcja uruchomienia --- */}
+            {status !== null && !online && (
+              <div className="rounded-2xl border border-line p-4">
+                <p className="text-sm font-semibold mb-1">Agent nie działa</p>
+                <p className="text-xs text-muted mb-3">
+                  Ta strona nie może zalogować się do dziennika bezpośrednio — GitHub Pages nie ma serwera, a Vulcan nie
+                  pozwala na zapytania z przeglądarki (CORS). Logowanie robi mały program na Twoim komputerze, dzięki
+                  czemu hasło nigdy nie trafia do sieci.
+                </p>
+
+                <div className="space-y-3">
+                  <div className="flex gap-2.5">
+                    <StepNumber>1</StepNumber>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold mb-1">
+                        Pobierz agenta (Node.js 20+) —{" "}
+                        <a
+                          href={REPO}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sage underline decoration-dotted"
+                        >
+                          katalog sync-agent na GitHubie
+                        </a>
+                      </p>
+                      <Command value="git clone https://github.com/rejson59/ProStudent.git" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <StepNumber>2</StepNumber>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold mb-1">Zaloguj się jednorazowo do dziennika</p>
+                      <Command
+                        value={`${COMMANDS.enter} && ${COMMANDS.login}`}
+                        hint="Agent otworzy eduVULCAN; po zalogowaniu wklejasz w terminalu zawartość https://eduvulcan.pl/api/ap."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <StepNumber>3</StepNumber>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold mb-1">Uruchom synchronizację w tle</p>
+                      <Command
+                        value={`${COMMANDS.enter} && ${COMMANDS.serve}`}
+                        hint="Zostaw okno otwarte. Dane odświeżają się co 2 h i są widoczne tylko na tym komputerze."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <Btn variant="soft" onClick={() => void refresh()} disabled={checking}>
+                    <Icon name="reset" className="w-4 h-4" /> {checking ? "Sprawdzam…" : "Sprawdź ponownie"}
+                  </Btn>
+                  <a href={REPO} target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-ink underline decoration-dotted">
+                    Instrukcja krok po kroku
+                  </a>
+                </div>
+                <p className="text-[11px] text-muted mt-2">
+                  Sprawdzany adres: <code>{AGENT_URL}</code> — połączenie idzie tylko przez ten komputer.
+                </p>
+              </div>
+            )}
+
+            {/* --- Ścieżka zapasowa: plik lub wklejenie --- */}
             <div className="rounded-2xl border border-line p-4">
-              <p className="text-sm font-semibold mb-1">Plik z danymi</p>
-              <p className="text-xs text-muted mb-3">Dokument <code>plecak-import-v1.json</code> z konwertera lub od agenta.</p>
-              <Btn variant="soft" onClick={() => fileRef.current?.click()} disabled={busy}>
-                <Icon name="plus" className="w-4 h-4" /> Wybierz plik
-              </Btn>
+              <p className="text-sm font-semibold mb-1">Nie chcesz agenta? Wczytaj dane z pliku</p>
+              <p className="text-xs text-muted mb-3">
+                Plik <code>snapshot.json</code> od agenta albo dowolny dokument <code>plecak-import-v1</code>.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Btn variant="soft" onClick={() => fileRef.current?.click()} disabled={busy}>
+                  <Icon name="plus" className="w-4 h-4" /> Wybierz plik
+                </Btn>
+                <Btn variant="ghost" onClick={() => setPasteOpen((prev) => !prev)} aria-expanded={pasteOpen}>
+                  {pasteOpen ? "Ukryj wklejanie" : "Wklej dane"}
+                </Btn>
+              </div>
               <input
                 ref={fileRef}
                 type="file"
@@ -219,50 +376,42 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
                   if (file) void onFile(file);
                 }}
               />
-            </div>
 
-            <div className="rounded-2xl border border-line p-4">
-              <label htmlFor="journal-paste" className="text-sm font-semibold mb-1 block">
-                Wklej dane
-              </label>
-              <p className="text-xs text-muted mb-2">
-                Wklej zawartość pliku, jeśli dostałeś go np. w wiadomości.
-              </p>
-              <textarea
-                id="journal-paste"
-                value={paste}
-                onChange={(event) => setPaste(event.target.value)}
-                rows={4}
-                spellCheck={false}
-                placeholder='{"format":"plecak-import","version":1,…}'
-                className="input w-full font-mono text-xs"
-              />
-              <Btn
-                variant="soft"
-                className="mt-2"
-                disabled={!paste.trim()}
-                onClick={() => {
-                  try {
-                    accept(JSON.parse(paste), "wklejonych danych");
-                  } catch {
-                    setError("Wklejony tekst nie jest poprawnym JSON-em.");
-                  }
-                }}
-              >
-                Sprawdź dane
-              </Btn>
+              {pasteOpen && (
+                <div className="mt-3">
+                  <label htmlFor="journal-paste" className="sr-only">
+                    Wklej dane importu
+                  </label>
+                  <textarea
+                    id="journal-paste"
+                    value={paste}
+                    onChange={(event) => setPaste(event.target.value)}
+                    rows={4}
+                    spellCheck={false}
+                    placeholder='{"format":"plecak-import","version":1,…}'
+                    className="input w-full font-mono text-xs"
+                  />
+                  <Btn
+                    variant="soft"
+                    className="mt-2"
+                    disabled={!paste.trim()}
+                    onClick={() => {
+                      try {
+                        accept(JSON.parse(paste), "wklejonych danych");
+                      } catch {
+                        setError("Wklejony tekst nie jest poprawnym JSON-em.");
+                      }
+                    }}
+                  >
+                    Sprawdź dane
+                  </Btn>
+                </div>
+              )}
             </div>
 
             {error && (
               <p role="alert" className="text-sm text-clay bg-clay/10 rounded-xl px-3 py-2">
                 {error}
-              </p>
-            )}
-            {status?.online && !status.ok && (
-              <p className="text-xs text-muted bg-paper border border-line rounded-xl px-3 py-2">
-                Agent odpowiada na porcie 8787, ale nie ma jeszcze pobranych danych. W katalogu{" "}
-                <code>sync-agent</code> uruchom <code>node src/cli.mjs login</code> (jednorazowo), a potem{" "}
-                <code>node src/cli.mjs serve</code>.
               </p>
             )}
           </div>
@@ -292,9 +441,7 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
                     type="checkbox"
                     checked={selection[row.key]}
                     disabled={!row.count}
-                    onChange={(event) =>
-                      setSelection((prev) => ({ ...prev, [row.key]: event.target.checked }))
-                    }
+                    onChange={(event) => setSelection((prev) => ({ ...prev, [row.key]: event.target.checked }))}
                     className="w-4 h-4 accent-[var(--color-sage)]"
                   />
                   <span className="flex-1 text-sm font-medium">{row.label}</span>
@@ -327,12 +474,6 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
               </Btn>
             </div>
           </div>
-        )}
-
-        {error && step === "preview" && (
-          <p role="alert" className="text-sm text-clay mt-3">
-            {error}
-          </p>
         )}
       </div>
     </div>
