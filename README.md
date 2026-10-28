@@ -20,7 +20,7 @@
 | **Fiszki** | Pudełka Leitnera, powtórki ważone, talie, sterowanie klawiaturą |
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
 | **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
-| **Dziennik** | Pozycja „Dziennik” w menu (także na telefonie i w stopce): kreator połączenia z **eduVULCAN** — oceny, plan z automatycznymi dzwonkami, sprawdziany i zadania domowe. Automatycznie przez lokalnego agenta `sync-agent/` albo z pliku / wklejenia |
+| **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań z **eduVULCAN**. Domyślnie **zakładka-przycisk** (bez instalacji, jeden klik na stronie dziennika), opcjonalnie agent `sync-agent/` (odświeżanie w tle) albo plik / wklejenie |
 | **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
 ---
@@ -106,7 +106,7 @@ src/
 ## 🧪 Testy
 
 ```bash
-npm test                      # 64 testy aplikacji (Vitest)
+npm test                      # 84 testy aplikacji (Vitest)
 node --test                    # 22 testy agenta (w katalogu sync-agent/)
 ```
 

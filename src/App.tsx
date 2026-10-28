@@ -14,6 +14,8 @@ import { requestPersistence, useLocal, useNow } from "./lib/store";
 import { addDays, dateISO, defaultTasks, uid, type Session, type Task } from "./lib/data";
 import { decodeSessions, decodeTab, decodeTasks, decodeText, decodeTheme } from "./lib/schema";
 import { fetchAgentSnapshot } from "./lib/journal/agent";
+import { readSnapshotFromHash } from "./lib/journal/hash";
+import type { JournalSnapshot } from "./lib/journal/types";
 import { useJournal } from "./lib/journal/useJournal";
 import { TAB_IDS, TABS, type TabId } from "./lib/nav";
 import { fmt, MODE_LABEL, useFocusTimer, type Mode } from "./lib/useTimer";
@@ -35,6 +37,7 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [dataPanel, setDataPanel] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [incoming, setIncoming] = useState<JournalSnapshot | null>(null);
   const [autoSync] = useLocal<boolean>("journalAutoSync", false);
   const [lastSync, setLastSync] = useLocal("journalLastSync", "", decodeText);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
@@ -43,6 +46,16 @@ export default function App() {
   // Poproś o trwałe przechowywanie danych (chroni przed automatycznym czyszczeniem).
   useEffect(() => {
     void requestPersistence();
+  }, []);
+
+  // Dane z zakładki działającej na stronie dziennika (`#dziennik=…`).
+  // Adres czyścimy od razu, żeby odświeżenie strony nie powtarzało importu.
+  useEffect(() => {
+    const snapshot = readSnapshotFromHash(window.location.hash);
+    if (!snapshot) return;
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    setIncoming(snapshot);
+    setJournalOpen(true);
   }, []);
 
   /**
@@ -415,7 +428,14 @@ export default function App() {
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} actions={actions} onQuickAdd={quickAdd} />
       <DataPanel open={dataPanel} onClose={() => setDataPanel(false)} onOpenJournal={() => { setDataPanel(false); setJournalOpen(true); }} />
-      <JournalImport open={journalOpen} onClose={() => setJournalOpen(false)} />
+      <JournalImport
+        open={journalOpen}
+        incoming={incoming}
+        onClose={() => {
+          setJournalOpen(false);
+          setIncoming(null);
+        }}
+      />
     </div>
   );
 }
