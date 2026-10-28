@@ -115,9 +115,13 @@ aplikacja ma jedną ścieżkę importu do przetestowania.
 - `src/lib/journal/normalize.ts` — `mergeSnapshot()`, `deriveBells()`, `journalId()`.
 - `src/lib/journal/agent.ts` — klient `GET /health` i `GET /snapshot.json` (timeout, bez cache).
 - `src/lib/journal/useJournal.ts` — wspólny zapis/cofanie dla importu i auto-syncu.
-- `src/components/JournalImport.tsx` — okno importu: agent / plik / wklejenie → podgląd → import.
+- `src/components/JournalImport.tsx` — kreator połączenia: stan agenta → instrukcja z kopiowaniem poleceń → podgląd → import.
 - `src/components/DataPanel.tsx` — sekcja „Import z e-dziennika” + przełącznik auto-sync.
 - `sync-agent/` — agent: `login`, `sync`, `serve`, `status` + 22 testy.
+
+Wejście: **„Dziennik” w menu bocznym** (na telefonie ikona w nagłówku, na dole link w stopce), a także *Twoje dane → Importuj*, paleta poleceń (`Ctrl/⌘ K` → „dziennik”) i stopka.
+
+> Aplikacja **celowo nie ma formularza logowania do dziennika**. GitHub Pages nie ma backendu, a `lekcjaplus.vulcan.net.pl` nie wysyła nagłówków CORS — hasło wpisane na stronie nie mogłoby nigdzie trafić. Logowanie odbywa się raz, w przeglądarce otwartej przez agenta, a strona dostaje tylko gotowy wynik.
 
 Automatyczna synchronizacja w aplikacji: przy starcie i co 10 minut, jeśli
 włączony przełącznik i agent odpowiada. Nowy snapshot (`exportedAt` nowszy niż

@@ -297,6 +297,14 @@ export default function App() {
             <kbd className="hidden lg:inline text-[10px] border border-line rounded-md px-1.5">⌘K</kbd>
           </button>
           <button
+            onClick={() => setJournalOpen(true)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-2xl text-sm text-muted hover:text-ink hover:bg-line/50 transition justify-center lg:justify-start cursor-pointer"
+            title="Połącz z e-dziennikiem (eduVULCAN)"
+          >
+            <Icon name="link" className="w-4 h-4" />
+            <span className="hidden lg:inline">Dziennik</span>
+          </button>
+          <button
             onClick={() => setDataPanel(true)}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-2xl text-sm text-muted hover:text-ink hover:bg-line/50 transition justify-center lg:justify-start cursor-pointer"
             title="Kopia zapasowa i dane"
@@ -336,6 +344,14 @@ export default function App() {
             <Icon name="search" />
           </button>
           <button
+            onClick={() => setJournalOpen(true)}
+            className="p-2 rounded-xl text-muted cursor-pointer"
+            aria-label="Połącz z e-dziennikiem"
+            title="Połącz z e-dziennikiem (eduVULCAN)"
+          >
+            <Icon name="link" />
+          </button>
+          <button
             onClick={() => setDataPanel(true)}
             className="p-2 rounded-xl text-muted cursor-pointer"
             aria-label="Kopia zapasowa i dane"
@@ -363,9 +379,17 @@ export default function App() {
             <kbd className="border border-line rounded px-1">Ctrl</kbd>+<kbd className="border border-line rounded px-1">K</kbd>{" "}
             otwiera szybkie akcje · klawisze 1–6 przełączają zakładki
           </p>
-          <button onClick={() => setDataPanel(true)} className="text-muted hover:text-ink underline decoration-dotted cursor-pointer">
-            Zrób kopię zapasową danych
-          </button>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+            <button
+              onClick={() => setJournalOpen(true)}
+              className="text-muted hover:text-ink underline decoration-dotted cursor-pointer"
+            >
+              Połącz z e-dziennikiem
+            </button>
+            <button onClick={() => setDataPanel(true)} className="text-muted hover:text-ink underline decoration-dotted cursor-pointer">
+              Zrób kopię zapasową danych
+            </button>
+          </div>
         </footer>
       </main>
 
