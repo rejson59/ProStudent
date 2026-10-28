@@ -45,6 +45,12 @@ export type AgentFetch = { ok: true; snapshot: JournalSnapshot } | { ok: false; 
 export async function fetchAgentSnapshot(base = AGENT_URL): Promise<AgentFetch> {
   try {
     const response = await withTimeout(`${base}/snapshot.json`, {}, 6000);
+    if (response.status === 404) {
+      return {
+        ok: false,
+        error: "Agent działa, ale nie ma jeszcze danych — uruchom jednorazowo `node src/cli.mjs login` w katalogu sync-agent",
+      };
+    }
     if (!response.ok) {
       return { ok: false, error: `Agent odpowiedział HTTP ${response.status}` };
     }

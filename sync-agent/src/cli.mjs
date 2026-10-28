@@ -27,6 +27,15 @@ async function readStdin() {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+/** Mapuje opcje CLI (`--credentials`, `--snapshot`, `--state`) na ścieżki dla `syncOnce`. */
+export function resolvePaths(options = {}) {
+  return {
+    credentialsPath: options.credentials ?? DEFAULTS.credentials,
+    snapshotPath: options.snapshot ?? DEFAULTS.snapshot,
+    statePath: options.state ?? DEFAULTS.state,
+  };
+}
+
 const readJsonFile = async (path) => {
   try {
     return JSON.parse(await readFile(path, "utf8"));
@@ -39,7 +48,9 @@ const readJsonFile = async (path) => {
 export async function syncOnce({ credentialsPath, snapshotPath, statePath, now = new Date(), clientFactory }) {
   const credentials = await readJsonFile(credentialsPath);
   if (!credentials?.privateKey) {
-    throw new Error("Brak data/credentials.json — najpierw uruchom `npx plecak-sync login`.");
+    const message = "Brak data/credentials.json — uruchom `node src/cli.mjs login`.";
+    await writeJson(statePath, { lastError: message, lastAttemptAt: now.toISOString() });
+    throw new Error(message);
   }
 
   const client = clientFactory ? clientFactory(credentials) : new VulcanClient({ credentials });
@@ -121,7 +132,7 @@ async function cmdLogin(args) {
   }
 
   const { credentials } = await registerDevice(apInput, { log });
-  const credentialsPath = args.credentials ?? DEFAULTS.credentials;
+  const { credentialsPath } = resolvePaths(args);
   await writeJson(credentialsPath, credentials);
   log(`\nZapisano ${credentialsPath} (tylko do odczytu dla Ciebie).`);
   log("Hasło nie jest nigdzie zapisywane — dalsze żądania podpisuje klucz.");
@@ -129,11 +140,7 @@ async function cmdLogin(args) {
 }
 
 async function cmdSync(args) {
-  const result = await syncOnce({
-    credentialsPath: args.credentials ?? DEFAULTS.credentials,
-    snapshotPath: args.snapshot ?? DEFAULTS.snapshot,
-    statePath: args.state ?? DEFAULTS.state,
-  });
+  const result = await syncOnce(resolvePaths(args));
   log(`Zsynchronizowano: ${describe(result.snapshot)}`);
   if (Object.keys(result.errors).length) {
     log("Część danych nie została pobrana:");
@@ -144,15 +151,11 @@ async function cmdSync(args) {
 async function cmdServe(args) {
   const port = Number(args.port ?? DEFAULTS.port);
   const interval = Number(args.interval ?? DEFAULTS.interval) * 60_000;
-  const paths = {
-    credentials: args.credentials ?? DEFAULTS.credentials,
-    snapshot: args.snapshot ?? DEFAULTS.snapshot,
-    state: args.state ?? DEFAULTS.state,
-  };
+  const paths = resolvePaths(args);
 
   const run = async (first = false) => {
     try {
-      const result = await syncOnce({ ...paths });
+      const result = await syncOnce(paths);
       log(`[${new Date().toLocaleTimeString("pl-PL")}] synchronizacja OK — ${describe(result.snapshot)}`);
       if (Object.keys(result.errors).length) {
         log(`  uwaga, pominięto: ${Object.keys(result.errors).join(", ")}`);
@@ -182,9 +185,10 @@ async function cmdServe(args) {
 }
 
 async function cmdStatus(args) {
-  const credentials = await readJsonFile(args.credentials ?? DEFAULTS.credentials);
-  const snapshot = await readJsonFile(args.snapshot ?? DEFAULTS.snapshot);
-  const state = (await readJsonFile(args.state ?? DEFAULTS.state)) ?? {};
+  const { credentialsPath, snapshotPath, statePath } = resolvePaths(args);
+  const credentials = await readJsonFile(credentialsPath);
+  const snapshot = await readJsonFile(snapshotPath);
+  const state = (await readJsonFile(statePath)) ?? {};
   const fresh = freshness(snapshot);
 
   log(`Wersja agenta: ${VERSION}`);

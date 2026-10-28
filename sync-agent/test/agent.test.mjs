@@ -10,7 +10,7 @@ import { createIdentity, identityToCredentials, toPem } from "../src/cert.mjs";
 import { jwtTenant, parseAp } from "../src/register.mjs";
 import { asList, buildSnapshot, gradeValue, mapExams, mapGrades, mapHomework, mapTimetable } from "../src/snapshot.mjs";
 import { createAgentServer, freshness } from "../src/server.mjs";
-import { syncOnce } from "../src/cli.mjs";
+import { resolvePaths, syncOnce } from "../src/cli.mjs";
 
 describe("podpisywanie żądań", () => {
   test("kanoniczny adres: małe litery i pełne kodowanie", () => {
@@ -275,6 +275,24 @@ describe("serwer agenta", () => {
   });
 });
 
+describe("ścieżki CLI", () => {
+  test("domyślne ścieżki siedzą w data/", () => {
+    assert.deepEqual(resolvePaths(), {
+      credentialsPath: "data/credentials.json",
+      snapshotPath: "data/snapshot.json",
+      statePath: "data/state.json",
+    });
+  });
+
+  test("opcje CLI nadpisują ścieżki (tryb serve używa tego samego resolvera)", () => {
+    const paths = resolvePaths({ credentials: "c.json", snapshot: "s.json", state: "st.json" });
+    assert.deepEqual(paths, { credentialsPath: "c.json", snapshotPath: "s.json", statePath: "st.json" });
+    // Regresja: wcześniej `serve` przekazywał {credentials, snapshot, state},
+    // a syncOnce oczekuje *Path — zapis po cichu trafiał donikąd.
+    assert.ok(!("credentials" in paths) && !("snapshot" in paths) && !("state" in paths));
+  });
+});
+
 describe("synchronizacja", () => {
   const fakeClient = (data) => () => data;
 
@@ -369,15 +387,18 @@ describe("synchronizacja", () => {
     assert.equal(JSON.parse(await readFile(snapshotPath, "utf8")).exportedAt, "stare");
   });
 
-  test("brak parowania to czytelna podpowiedź", async () => {
+  test("brak parowania to czytelna podpowiedź i wpis w stanie", async () => {
     const root = await mkdtemp(join(tmpdir(), "plecak-sync-"));
+    const statePath = join(root, "state.json");
     await assert.rejects(
       syncOnce({
         credentialsPath: join(root, "brak.json"),
         snapshotPath: join(root, "snapshot.json"),
-        statePath: join(root, "state.json"),
+        statePath,
       }),
       /login/
     );
+    // /health musi móc powiedzieć, czego brakuje.
+    assert.match(JSON.parse(await readFile(statePath, "utf8")).lastError, /login/);
   });
 });
