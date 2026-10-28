@@ -1,28 +1,45 @@
 # Import danych z e-dziennika — jak to działa i gdzie są granice
 
-Dokument opisuje **wdrożoną** ścieżkę importu z eduVULCAN: lokalnego agenta
-synchronizacji, format wymiany danych i to, czego uczciwie nie da się
-zagwarantować.
+Dokument opisuje **wdrożone** ścieżki importu z eduVULCAN: zakładkę-przycisk
+(bez instalacji), agenta (pełna automatyzacja) i format wymiany danych.
 
 ## 1. Wniosek w jednym akapicie
 
 Aplikacja Plecak jest statyczna (GitHub Pages, brak backendu), więc nie może
 sama zalogować się do dziennika: przeglądarka nie ma gdzie bezpiecznie trzymać
-hasła ani klucza, a `lekcjaplus.vulcan.net.pl` nie wysyła nagłówków CORS.
-Rozwiązanie: **jednorazowe parowanie urządzenia** (jak w oficjalnej aplikacji
-Vulcan) i **mały agent na Twoim komputerze**, który trzyma klucz, odświeża dane
-w tle i udostępnia gotowy plik pod `http://127.0.0.1:8787`. Aplikacja pozostaje
-bez sekretów i bez backendu — pyta tylko o wynikowy snapshot.
+hasła, a serwery Vulcana nie wysyłają nagłówków CORS. Rozwiązania są dwa:
+**zakładka-przycisk** (wykonuje się na stronie dziennika, korzysta z sesji,
+której użytkownik już używa) oraz **lokalny agent** (automatyczne odświeżanie).
+Hasło nigdy nie trafia do aplikacji.
 
-```
-eduVULCAN ──podpis RSA──► plecak-sync (127.0.0.1:8787) ──snapshot──► Plecak
-```
+## 1a. Zakładka (domyślna, bez instalacji)
+
+1. Plecak → **Dziennik** → przeciągnij przycisk **„Pobierz z dziennika”** na pasek zakładek.
+2. Otwórz eduVULCAN, zaloguj się, kliknij zakładkę.
+3. Dane pojawiają się w Plecaku do zatwierdzenia (adres `#dziennik=…`).
+
+Jak to działa technicznie:
+
+- zakładka wstrzykuje `plecak-sync.js` z GitHub Pages (adres w `public/`),
+- skrypt czyta tokeny z `https://eduvulcan.pl/api/ap` — **ta sama domena, więc
+  sesja działa i nie ma tu żadnego logowania w aplikacji**,
+- przy pierwszym uruchomieniu rejestruje klucz urządzenia (RSA 2048 + certyfikat
+  X.509 generowane przez WebCrypto) i zapisuje go w `localStorage` dziennika —
+  kolejne kliknięcia tylko podpisują żądania,
+- pobiera oceny, plan (okno −14…+21 dni), sprawdziany i zadania domowe,
+- pakuje je w `plecak-import-v1` i otwiera Plecak z danymi w adresie.
+
+Ograniczenia: trzeba kliknąć za każdym razem (przeglądarka nie działa w tle na
+cudzej stronie), a jeśli Vulcan zablokuje zapytania z `eduvulcan.pl` (CORS),
+zostaje import pliku. Dlatego ścieżka „z pliku” nigdy nie znika.
 
 ## 2. Dlaczego nie inne warianty
 
 | Wariant | Ocena |
 | --- | --- |
 | Ręczny eksport/import pliku | Działa zawsze, ale nie spełnia wymogu „samo się aktualizuje”. **Zostaje jako fallback.** |
+| **Zakładka (bookmarklet)** | **Wybrana jako domyślna**: zero instalacji, sesja dziennika użytkownika, jeden klik. |
+| Agent lokalny | Wybrany dla chcących pełnej automatyzacji (odświeżanie co 2 h). Wymaga Node.js — dlatego nie jest domyślny. |
 | Logowanie w aplikacji webowej | Odrzucone: hasło w przeglądarce + CORS + RODO. Niemożliwe bez backendu. |
 | Backend/proxy w chmurze | Odrzucone: koszty, odpowiedzialność za dane uczniów, blokady Vulcana, brak zgody na trzymanie haseł. |
 | Rozszerzenie przeglądarki | Scraping HTML dziennika, kruche, wymaga uprawnień do wszystkich stron. Gorsze niż agent. |
@@ -113,6 +130,9 @@ aplikacja ma jedną ścieżkę importu do przetestowania.
 
 - `src/lib/journal/types.ts` — format i tolerancyjny dekoder `decodeSnapshot()`.
 - `src/lib/journal/normalize.ts` — `mergeSnapshot()`, `deriveBells()`, `journalId()`.
+- `public/plecak-sync.js` — most uruchamiany zakładką na stronie dziennika (WebCrypto, DER/X.509, podpisywanie, mapowanie).
+- `src/lib/journal/bookmarklet.ts` — generowanie kodu zakładki i wersji do konsoli.
+- `src/lib/journal/hash.ts` — przekazanie danych przez `#dziennik=…`.
 - `src/lib/journal/agent.ts` — klient `GET /health` i `GET /snapshot.json` (timeout, bez cache).
 - `src/lib/journal/useJournal.ts` — wspólny zapis/cofanie dla importu i auto-syncu.
 - `src/components/JournalImport.tsx` — kreator połączenia: stan agenta → instrukcja z kopiowaniem poleceń → podgląd → import.
@@ -142,6 +162,16 @@ i zapomnij”, a nie „klikaj import za każdym razem”.
    działać — import z pliku nadal działa.
 4. **Jedno konto/urządzenie.** Klucz jest przypisany do urządzenia; na drugim
    komputerze trzeba sparować osobno.
+
+## 7a. Bezpieczeństwo zakładki
+
+- Kod zakładki jest w tym repozytorium (`public/plecak-sync.js`) i wykonuje się
+  w kontekście `eduvulcan.pl` — ma dostęp do sesji tej strony, tak jak każda
+  wklejona konsola. **Nie klikaj cudzych zakładek „do dziennika”.**
+- Klucz urządzenia leży w `localStorage` dziennika. To odpowiednik hasła do
+  konta w zakresie odczytu danych — nie udostępniaj go i czyść przez
+  „Wyczyść parowanie” w okienku mostu.
+- Hasło nie jest nigdzie zapisywane: zakładka nigdy go nie widzi.
 
 ## 8. Plan awaryjny (zawsze dostępny)
 
