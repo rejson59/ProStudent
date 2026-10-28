@@ -113,7 +113,10 @@ CI (`.github/workflows/ci.yml`) uruchamia `typecheck`, testy i build na każdym 
 
 ## 📋 Stan projektu i plan rozwoju
 
-Projekt jest funkcjonalny i przechodzi `typecheck` + `build`. Szczegółowy audyt (błędy, dostępność, wydajność, pomysły produktowe, roadmapa) znajduje się w **[REVIEW.md](./REVIEW.md)**.
+Projekt jest funkcjonalny i przechodzi `typecheck` + testy + `build`.
+
+- **[REVIEW.md](./REVIEW.md)** — audyt: błędy, dostępność, wydajność, pomysły produktowe, roadmapa.
+- **[IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md)** — propozycja importu ocen, planu i zadań z e-dziennika (Vulcan / eduVULCAN / Librus).
 
 ---
 
