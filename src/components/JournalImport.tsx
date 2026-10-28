@@ -194,7 +194,9 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
                   {status === null
                     ? "sprawdzam…"
                     : status.online
-                    ? `agent online${status.lastSync ? ` · ostatnia synchronizacja ${new Date(status.lastSync).toLocaleString("pl-PL")}` : ""}`
+                    ? status.ok
+                      ? `agent online · ostatnia synchronizacja ${new Date(status.lastSync ?? "").toLocaleString("pl-PL")}`
+                      : "agent online, brak danych — zrób jednorazowe logowanie"
                     : "agent nie wykryty"}
                 </span>
               </div>
@@ -254,6 +256,13 @@ export function JournalImport({ open, onClose }: { open: boolean; onClose: () =>
             {error && (
               <p role="alert" className="text-sm text-clay bg-clay/10 rounded-xl px-3 py-2">
                 {error}
+              </p>
+            )}
+            {status?.online && !status.ok && (
+              <p className="text-xs text-muted bg-paper border border-line rounded-xl px-3 py-2">
+                Agent odpowiada na porcie 8787, ale nie ma jeszcze pobranych danych. W katalogu{" "}
+                <code>sync-agent</code> uruchom <code>node src/cli.mjs login</code> (jednorazowo), a potem{" "}
+                <code>node src/cli.mjs serve</code>.
               </p>
             )}
           </div>
