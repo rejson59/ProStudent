@@ -40,6 +40,9 @@ export const decodeTheme: Decoder<"auto" | "day" | "night"> = (raw) =>
 
 export const decodeText: Decoder<string> = (raw) => str(raw, 2000);
 
+/** Przełączniki w localStorage zapisujemy jako prawdziwe `boolean`. */
+export const decodeBool: Decoder<boolean> = (raw) => (typeof raw === "boolean" ? raw : undefined);
+
 export const decodeFocusLen: Decoder<number> = (raw) => num(raw, 1, 180);
 
 export const decodeBells: Decoder<Bells> = (raw) => {

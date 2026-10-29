@@ -20,6 +20,7 @@
 | **Fiszki** | Pudełka Leitnera, powtórki ważone, talie, sterowanie klawiaturą |
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
 | **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
+| **Na telefon** | Instalacja z ekranu głównego (PWA): ikona obok aplikacji, pełny ekran, praca offline, skróty „Zadania”/„Plan”/„Dziennik”, „Udostępnij” z innej aplikacji tworzy zadanie, otwieranie plików `.json` |
 | **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań z **eduVULCAN**. Domyślnie **zakładka-przycisk** (bez instalacji, jeden klik na stronie dziennika), opcjonalnie agent `sync-agent/` (odświeżanie w tle) albo plik / wklejenie |
 | **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
@@ -61,7 +62,8 @@ npm run dev       # http://localhost:5173
 ```
 src/
 ├─ App.tsx                 # nawigacja, motyw, paleta poleceń, timer, toasty
-├─ main.tsx
+├─ main.tsx                # punkt wejścia + rejestracja service workera
+├─ types/                  # deklaracje dla mostu dziennika
 ├─ index.css               # tokeny Tailwind @theme, motyw nocny, animacje
 ├─ components/
 │  ├─ Dashboard.tsx        # pulpit (hero + 9 kart)
@@ -103,10 +105,20 @@ src/
 
 ---
 
+## 📱 Na telefonie i tablecie
+
+Plecak jest aplikacją PWA — nie trzeba nic instalować ze sklepu:
+
+- **Android/Chrome:** zakładka „Dziennik” → „Zainstaluj” (albo menu ⋮ → „Dodaj do ekranu głównego”).
+- **iPhone/iPad (Safari):** przycisk Udostępnij → „Dodaj do ekranu początkowego”.
+- Po instalacji aplikacja otwiera się bez paska przeglądarki, **działa offline** (plan i zadania w autobusie), a długie przytrzymanie ikony pokazuje skróty: **Zadania**, **Plan**, **Dziennik**.
+- **„Udostępnij” z innej aplikacji** (np. link albo notatka) tworzy zadanie w Plecaku.
+- Plik `.json` z danymi dziennika można otworzyć bezpośrednio w Plecaku („Otwórz za pomocą”), a Plecak pokaże podgląd importu.
+
 ## 🧪 Testy
 
 ```bash
-npm test                      # 84 testy aplikacji (Vitest)
+npm test                      # 91 testów aplikacji (Vitest)
 node --test                    # 22 testy agenta (w katalogu sync-agent/)
 ```
 

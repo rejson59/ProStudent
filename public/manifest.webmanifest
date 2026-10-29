@@ -1,0 +1,70 @@
+{
+  "name": "Plecak — szkolne centrum dowodzenia",
+  "short_name": "Plecak",
+  "description": "Plan lekcji, zadania, oceny, sprawdziany, timer fokusu i fiszki — w jednym miejscu, na telefonie i komputerze.",
+  "lang": "pl",
+  "dir": "ltr",
+  "start_url": "./index.html?zrodlo=aplikacja",
+  "scope": "./",
+  "id": "/ProStudent/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#FBF7EF",
+  "theme_color": "#121420",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Zadania",
+      "short_name": "Zadania",
+      "description": "Sprawdziany, kartkówki i zadania domowe",
+      "url": "./index.html?zakladka=tasks",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Plan lekcji",
+      "short_name": "Plan",
+      "description": "Plan na dziś i cały tydzień",
+      "url": "./index.html?zakladka=plan",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Import z dziennika",
+      "short_name": "Dziennik",
+      "description": "Pobierz oceny i sprawdziany z eduVULCAN",
+      "url": "./index.html?akcja=dziennik",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "./index.html?akcja=import",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "plik",
+          "accept": ["application/json", "text/plain", "application/octet-stream", ".json", ".txt"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "./index.html?akcja=import",
+      "accept": {
+        "application/json": [".json"],
+        "text/plain": [".json", ".txt"]
+      }
+    }
+  ]
+}

@@ -163,7 +163,20 @@ i zapomnij”, a nie „klikaj import za każdym razem”.
 4. **Jedno konto/urządzenie.** Klucz jest przypisany do urządzenia; na drugim
    komputerze trzeba sparować osobno.
 
-## 7a. Bezpieczeństwo zakładki
+## 7a. Telefon i tablet
+
+Zakładki na pasku nie ma na telefonie, więc dla urządzeń mobilnych zostały:
+
+1. **Plik z danymi** — wgranie `snapshot.json` (albo dokumentu `plecak-import-v1`)
+   w oknie importu. Na Androidzie działa też „Otwórz za pomocą → Plecak”,
+   a na iPhonie „Udostępnij → Plecak” (wymaga zainstalowanej aplikacji).
+2. **Agent** — jeśli ktoś ma komputer, może wystawić dane w sieci lokalnej;
+   na telefonie wystarczy otworzyć Plecak na tym samym Wi-Fi.
+
+Plecak jako PWA: instalacja z ekranu głównego, praca offline i skróty
+(`?zakladka=tasks`, `?zakladka=plan`, `?akcja=dziennik`).
+
+## 7b. Bezpieczeństwo zakładki
 
 - Kod zakładki jest w tym repozytorium (`public/plecak-sync.js`) i wykonuje się
   w kontekście `eduvulcan.pl` — ma dostęp do sesji tej strony, tak jak każda
