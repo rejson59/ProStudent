@@ -10,7 +10,9 @@ import { ConnectDesktop } from "./ConnectDesktop";
 import { detectPlatform } from "../lib/mobile";
 import { useLocal } from "../lib/store";
 import { decodeText } from "../lib/schema";
-import { copyText } from "../lib/clipboard";
+import { copyText, readClipboard } from "../lib/clipboard";
+import { recognizePaste } from "../lib/journal/smartPaste";
+import { detectOs, JOURNAL_URL } from "../lib/journal/connect";
 
 type Step = "source" | "preview";
 
@@ -72,10 +74,11 @@ export function JournalImport({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [selection, setSelection] = useState<ImportSelection>({ grades: true, timetable: true, tasks: true });
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [notes, setNotes] = useState<string[]>([]);
   const [agentOpen, setAgentOpen] = useState(false);
   const [paste, setPaste] = useState("");
   const [isDesktop] = useState(() => detectPlatform() === "desktop");
+  const [os] = useState(() => detectOs());
   const [lastSync, setLastSync] = useLocal<string>("journalLastSync", "", decodeText);
 
   const accept = useCallback((raw: unknown, originLabel: string) => {
@@ -92,6 +95,7 @@ export function JournalImport({
       return false;
     }
     setError(null);
+    setNotes([]);
     setSnapshot(decoded);
     setSelection({
       grades: Boolean(decoded.grades?.length),
@@ -106,7 +110,7 @@ export function JournalImport({
     if (!open) return;
     setError(null);
     setPaste("");
-    setPasteOpen(false);
+    setNotes([]);
     setSelection({ grades: true, timetable: true, tasks: true });
 
     // Dane przyniesione przez zakładkę ze strony dziennika mają pierwszeństwo.
@@ -142,22 +146,40 @@ export function JournalImport({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  /**
+   * Jedna droga dla każdego: wklejone dane (albo plik) trafiają do wspólnego
+   * rozpoznawania — JSON, adres z `#dziennik=` czy skopiowana strona.
+   */
+  const recognizeNow = useCallback((value: string) => {
+    const result = recognizePaste(value);
+    if (!result) {
+      setError(
+        "Nie udało się rozpoznać danych. Spróbuj skopiować samą tabelę ocen albo plan lekcji — albo wybierz plik z danymi."
+      );
+      return;
+    }
+    setError(null);
+    setNotes(result.notes);
+    setSnapshot(result.snapshot);
+    setSelection({
+      grades: Boolean(result.snapshot.grades?.length),
+      timetable: Boolean(result.snapshot.timetable?.length),
+      tasks: Boolean(result.snapshot.exams?.length || result.snapshot.homework?.length),
+    });
+    setStep("preview");
+  }, []);
+
   const onFile = useCallback(
     async (file: File) => {
       setBusy(true);
       try {
-        const content = await file.text();
-        try {
-          accept(JSON.parse(content), file.name);
-        } catch {
-          setError("Plik nie jest poprawnym JSON-em.");
-        }
+        recognizeNow(await file.text());
       } finally {
         setBusy(false);
         if (fileRef.current) fileRef.current.value = "";
       }
     },
-    [accept]
+    [recognizeNow]
   );
 
   const fromAgent = useCallback(async () => {
@@ -238,127 +260,95 @@ export function JournalImport({
 
         {step === "source" && (
           <div className="space-y-4">
-            {/* 1. Połączenie: na komputerze zakładka w przeglądarce, na telefonie plik */}
-            {isDesktop ? (
-              <ConnectDesktop lastSync={lastSync} />
-            ) : (
-              <div className="rounded-2xl border border-line bg-paper p-4">
-                <p className="text-sm font-semibold mb-1">Na telefonie najprościej z pliku</p>
-                <p className="text-xs text-muted">
-                  Pasek zakładek, na którym działa połączenie z dziennikiem, jest tylko w przeglądarce na komputerze.
-                  Tutaj wgraj plik <code>snapshot.json</code> (albo dowolny dokument <code>plecak-import-v1</code>) —
-                  przycisk niżej.
-                </p>
+            {/* Najprostsza droga: kopiuj i wklej. Działa na każdym urządzeniu. */}
+            <div className="rounded-2xl border border-sage/40 bg-sage/8 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Icon name="clipboard" className="w-4 h-4 text-sage" />
+                <p className="text-sm font-semibold">Skopiuj z dziennika i wklej tutaj</p>
               </div>
-            )}
-
-            {/* 2. Plik / wklejenie */}
-            <div className="rounded-2xl border border-line p-4">
-              <p className="text-sm font-semibold mb-1">Albo z pliku</p>
               <p className="text-xs text-muted mb-3">
-                Plik <code>snapshot.json</code> od agenta albo dowolny dokument <code>plecak-import-v1</code>.
+                Jedna droga dla telefonu, tabletu i komputera — bez instalowania i bez zakładek.
               </p>
-              <div className="flex flex-wrap gap-2">
+
+              <ol className="text-xs text-muted space-y-1.5 mb-3">
+                <li>
+                  <b className="text-ink">1.</b> Otwórz dziennik i zaloguj się.
+                </li>
+                <li>
+                  <b className="text-ink">2.</b>{" "}
+                  {isDesktop ? (
+                    <>
+                      Zaznacz całą stronę i skopiuj:{" "}
+                      <kbd className="border border-line rounded px-1 bg-paper">{os === "mac" ? "⌘" : "Ctrl"}+A</kbd>,
+                      potem{" "}
+                      <kbd className="border border-line rounded px-1 bg-paper">{os === "mac" ? "⌘" : "Ctrl"}+C</kbd>.
+                    </>
+                  ) : (
+                    <>Przytrzymaj tekst na stronie i wybierz „Zaznacz wszystko”, potem „Kopiuj”.</>
+                  )}
+                </li>
+                <li>
+                  <b className="text-ink">3.</b> Wróć tutaj i kliknij <b>„Wklej ze schowka”</b> (albo kliknij w pole
+                  i wklej ręcznie). Plecak sam rozpozna oceny, plan i sprawdziany.
+                </li>
+              </ol>
+
+              <label htmlFor="journal-paste" className="sr-only">
+                Wklej dane skopiowane z dziennika
+              </label>
+              <textarea
+                id="journal-paste"
+                value={paste}
+                rows={4}
+                spellCheck={false}
+                onChange={(event) => setPaste(event.target.value)}
+                onPaste={(event) => {
+                  const text = event.clipboardData?.getData("text/plain");
+                  if (!text) return;
+                  event.preventDefault();
+                  setPaste(text);
+                  recognizeNow(text);
+                }}
+                placeholder="Wklej tutaj — oceny, plan, sprawdziany, całą stronę dziennika albo plik JSON"
+                className="input w-full text-xs font-mono"
+              />
+
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <Btn
+                  onClick={async () => {
+                    const text = await readClipboard();
+                    if (!text) {
+                      setError("Przeglądarka nie dała odczytać schowka — kliknij w pole i wklej ręcznie (Ctrl+V).");
+                      return;
+                    }
+                    setPaste(text);
+                    recognizeNow(text);
+                  }}
+                  disabled={busy}
+                >
+                  <Icon name="clipboard" className="w-4 h-4" /> Wklej ze schowka
+                </Btn>
+                <Btn variant="soft" onClick={() => recognizeNow(paste)} disabled={!paste.trim() || busy}>
+                  <Icon name="check" className="w-4 h-4" /> Rozpoznaj dane
+                </Btn>
                 <Btn variant="soft" onClick={() => fileRef.current?.click()} disabled={busy}>
                   <Icon name="plus" className="w-4 h-4" /> Wybierz plik
                 </Btn>
-                <Btn variant="ghost" onClick={() => setPasteOpen((prev) => !prev)} aria-expanded={pasteOpen}>
-                  {pasteOpen ? "Ukryj wklejanie" : "Wklej dane"}
-                </Btn>
+                <a
+                  href={JOURNAL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink underline decoration-dotted"
+                >
+                  <Icon name="external" className="w-3.5 h-3.5" /> Otwórz eduvulcan.pl
+                </a>
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/json,.json"
-                className="sr-only"
-                aria-label="Wybierz plik importu z dziennika"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) void onFile(file);
-                }}
-              />
 
-              {pasteOpen && (
-                <div className="mt-3">
-                  <label htmlFor="journal-paste" className="sr-only">
-                    Wklej dane importu
-                  </label>
-                  <textarea
-                    id="journal-paste"
-                    value={paste}
-                    onChange={(event) => setPaste(event.target.value)}
-                    rows={4}
-                    spellCheck={false}
-                    placeholder='{"format":"plecak-import","version":1,…}'
-                    className="input w-full font-mono text-xs"
-                  />
-                  <Btn
-                    variant="soft"
-                    className="mt-2"
-                    disabled={!paste.trim()}
-                    onClick={() => {
-                      try {
-                        accept(JSON.parse(paste), "wklejonych danych");
-                      } catch {
-                        setError("Wklejony tekst nie jest poprawnym JSON-em.");
-                      }
-                    }}
-                  >
-                    Sprawdź dane
-                  </Btn>
-                </div>
-              )}
-            </div>
-
-            {/* 3. Agent — dla chcących pełnej automatyzacji */}
-            <div className="rounded-2xl border border-line p-4">
-              <button
-                type="button"
-                onClick={() => setAgentOpen((prev) => !prev)}
-                aria-expanded={agentOpen}
-                className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
-              >
-                <span>
-                  <span className="text-sm font-semibold block">Pełna automatyzacja (agent)</span>
-                  <span className="text-xs text-muted">
-                    {online
-                      ? status?.ok
-                        ? `agent online · ostatnia synchronizacja ${new Date(status.lastSync ?? "").toLocaleString("pl-PL")}`
-                        : "agent online, brakuje logowania"
-                      : "opcjonalnie: odświeżanie bez klikania, wymaga Node.js"}
-                  </span>
-                </span>
-                <Icon name={agentOpen ? "x" : "plus"} className="w-4 h-4 shrink-0 text-muted" />
-              </button>
-
-              {agentOpen && (
-                <div className="mt-3 space-y-3">
-                  {online && status?.ok ? (
-                    <Btn onClick={fromAgent} disabled={busy}>
-                      <Icon name="reset" className="w-4 h-4" /> Pobierz dane z agenta
-                    </Btn>
-                  ) : (
-                    <>
-                      <p className="text-xs text-muted">
-                        Agent działa na Twoim komputerze i odświeża dane co 2 h — bez klikania. Wymaga Node.js 20+.
-                      </p>
-                      <Command value="git clone https://github.com/rejson59/ProStudent.git" />
-                      <Command value="cd ProStudent/sync-agent && node src/cli.mjs login" />
-                      <Command value="cd ProStudent/sync-agent && node src/cli.mjs serve" />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Btn variant="ghost" onClick={() => void agentStatus().then(setStatus)}>
-                          <Icon name="reset" className="w-4 h-4" /> Sprawdź ponownie
-                        </Btn>
-                        <a href={REPO} target="_blank" rel="noreferrer" className="text-xs text-muted hover:text-ink underline decoration-dotted">
-                          Instrukcja agenta
-                        </a>
-                      </div>
-                      <p className="text-[11px] text-muted">
-                        Sprawdzany adres: <code>{AGENT_URL}</code>
-                      </p>
-                    </>
-                  )}
-                </div>
+              {!paste.trim() && (
+                <p className="text-[11px] text-muted mt-2">
+                  Nic nie trzeba przepisywać — wystarczy wkleić to, co skopiujesz z dziennika. Rozpoznane dane
+                  zobaczysz najpierw w podglądzie i możesz je odrzucić.
+                </p>
               )}
             </div>
 
@@ -367,6 +357,94 @@ export function JournalImport({
                 {error}
               </p>
             )}
+
+            <details className="rounded-2xl border border-line p-4">
+              <summary className="text-sm font-semibold cursor-pointer select-none">
+                Inne sposoby — jednorazowa zakładka, agent
+              </summary>
+              <div className="mt-3 space-y-4">
+                <p className="text-xs text-muted">
+                  Wklejanie nic nie kosztuje i działa zawsze. Jeśli chcesz, żeby kolejne odświeżenia były szybsze,
+                  możesz dodać jednorazową zakładkę w przeglądarce na komputerze.
+                </p>
+
+                {isDesktop ? (
+                  <ConnectDesktop lastSync={lastSync} />
+                ) : (
+                  <p className="text-xs text-muted rounded-xl border border-line bg-paper p-3">
+                    Na telefonie pasek zakładek nie istnieje — zostaje wklejanie (powyżej) albo plik z danymi.
+                  </p>
+                )}
+
+                <div className="rounded-2xl border border-line p-4">
+                  <button
+                    type="button"
+                    onClick={() => setAgentOpen((prev) => !prev)}
+                    aria-expanded={agentOpen}
+                    className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
+                  >
+                    <span>
+                      <span className="text-sm font-semibold block">Pełna automatyzacja (agent)</span>
+                      <span className="text-xs text-muted">
+                        {online
+                          ? status?.ok
+                            ? `agent online · ostatnia synchronizacja ${new Date(status.lastSync ?? "").toLocaleString("pl-PL")}`
+                            : "agent online, brakuje logowania"
+                          : "opcjonalnie: odświeżanie bez klikania, wymaga Node.js"}
+                      </span>
+                    </span>
+                    <Icon name={agentOpen ? "x" : "plus"} className="w-4 h-4 shrink-0 text-muted" />
+                  </button>
+
+                  {agentOpen && (
+                    <div className="mt-3 space-y-3">
+                      {online && status?.ok ? (
+                        <Btn onClick={fromAgent} disabled={busy}>
+                          <Icon name="reset" className="w-4 h-4" /> Pobierz dane z agenta
+                        </Btn>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted">
+                            Agent działa na Twoim komputerze i odświeża dane co 2 h — bez klikania. Wymaga Node.js 20+.
+                          </p>
+                          <Command value="git clone https://github.com/rejson59/ProStudent.git" />
+                          <Command value="cd ProStudent/sync-agent && node src/cli.mjs login" />
+                          <Command value="cd ProStudent/sync-agent && node src/cli.mjs serve" />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Btn variant="ghost" onClick={() => void agentStatus().then(setStatus)}>
+                              <Icon name="reset" className="w-4 h-4" /> Sprawdź ponownie
+                            </Btn>
+                            <a
+                              href={REPO}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-muted hover:text-ink underline decoration-dotted"
+                            >
+                              Instrukcja agenta
+                            </a>
+                          </div>
+                          <p className="text-[11px] text-muted">
+                            Sprawdzany adres: <code>{AGENT_URL}</code>
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </details>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json,.txt,.html"
+              className="sr-only"
+              aria-label="Wybierz plik z danymi dziennika"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void onFile(file);
+              }}
+            />
           </div>
         )}
 
@@ -377,6 +455,14 @@ export function JournalImport({
               {snapshot.student?.name ? ` · ${snapshot.student.name}` : ""} · wyeksportowano{" "}
               {new Date(snapshot.exportedAt).toLocaleString("pl-PL")}
             </p>
+
+            {notes.length > 0 && (
+              <ul className="text-xs text-muted space-y-1 bg-paper border border-line rounded-xl p-3">
+                {notes.map((note) => (
+                  <li key={note}>• {note}</li>
+                ))}
+              </ul>
+            )}
 
             <div className="space-y-2">
               {[

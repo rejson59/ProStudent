@@ -25,3 +25,20 @@ export async function copyText(value: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Odczyt schowka. Działa tam, gdzie przeglądarka pozwala na to po kliknięciu
+ * (Chrome/Edge, Safari po geście użytkownika); w pozostałych przypadkach
+ * zwracamy `null` i użytkownik po prostu wkleja ręcznie.
+ */
+export async function readClipboard(): Promise<string | null> {
+  try {
+    if (navigator.clipboard?.readText) {
+      const value = await navigator.clipboard.readText();
+      return value ?? null;
+    }
+  } catch {
+    // Brak zgody albo HTTP — zostaje wklejenie ręczne.
+  }
+  return null;
+}

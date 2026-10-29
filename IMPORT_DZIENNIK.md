@@ -12,7 +12,36 @@ hasła, a serwery Vulcana nie wysyłają nagłówków CORS. Rozwiązania są dwa
 której użytkownik już używa) oraz **lokalny agent** (automatyczne odświeżanie).
 Hasło nigdy nie trafia do aplikacji.
 
-## 1a. Zakładka (domyślna, bez instalacji)
+## 1. Najprościej: kopiuj i wklej (każde urządzenie)
+
+Ta droga nie wymaga niczego poza przeglądarką:
+
+1. Otwórz dziennik i zaloguj się.
+2. Zaznacz całą stronę i skopiuj (`Ctrl`/`⌘`+`A`, `Ctrl`/`⌘`+`C`; na telefonie
+   przytrzymaj → „Zaznacz wszystko” → „Kopiuj”).
+3. Plecak → **Dziennik** → **„Wklej ze schowka”** (albo kliknij w pole i wklej).
+4. Sprawdź podgląd i kliknij **Zaimportuj**.
+
+`recognizePaste()` (`src/lib/journal/smartPaste.ts`) rozpoznaje po kolei:
+
+| Wejście | Co robi |
+| --- | --- |
+| dokument JSON | `decodeSnapshot` — pełne dane, bez zgadywania |
+| adres z `#dziennik=…` | `decodeSnapshotParam` |
+| skopiowana strona (HTML) | usuwa skrypty/style, zamienia tabelę na linie |
+| zwykły tekst | oceny („Matematyka: 5, 4, 3+”, „Matematyka” + „5 4 3”), plan („08:00 - 08:45 Matematyka 12” pod nazwą dnia) i sprawdziany (data + słowo „sprawdzian/kartkówka”) |
+
+Heurystyki są celowo ostrożne: oceną jest tylko `1–6` z `+`/`-` albo `np`/`bz`;
+data wpisu i waga („waga 2”) są usuwane przed liczeniem; przy jednej ocenie
+bez dwukropka wymagamy wiersza „Przedmiot 5” (inaczej numer lekcji byłby
+stopniem). Wszystko, co rozpoznane, trafia najpierw do podglądu z licznikami —
+nic nie zapisuje się bez kliknięcia.
+
+Ograniczenie: to odczyt tego, co widać na stronie. Jeśli dziennik pokazuje
+oceny tylko po kliknięciu w przedmiot, skopiuj tę widoczną tabelę; wagi i daty
+można potem poprawić w Plecaku.
+
+## 1a. Zakładka (dla komputerów, jedna konfiguracja)
 
 Plecak → **Dziennik** pokazuje kartę dopasowaną do urządzenia: na komputerze
 trzy kroki, na telefonie od razu import pliku (paska zakładek tam nie ma).
