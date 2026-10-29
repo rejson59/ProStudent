@@ -21,7 +21,7 @@
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
 | **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
 | **Na telefon** | Instalacja z ekranu głównego (PWA): ikona obok aplikacji, pełny ekran, praca offline, skróty „Zadania”/„Plan”/„Dziennik”, „Udostępnij” z innej aplikacji tworzy zadanie, otwieranie plików `.json` |
-| **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań z **eduVULCAN**. Domyślnie **zakładka-przycisk** (bez instalacji, jeden klik na stronie dziennika), opcjonalnie agent `sync-agent/` (odświeżanie w tle) albo plik / wklejenie |
+| **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań z **eduVULCAN**. **Na komputerze** karta prowadzi przez 3 kroki (pasek zakładek → przeciągnięcie przycisku → kliknięcie w dzienniku), z podpowiedziami skrótów dla Windows/Mac i przyciskiem „Otwórz eduvulcan.pl”; po pierwszym imporcie pokazuje stan połączenia i „Odśwież z dziennika”. **Na telefonie** zostaje plik / wklejenie. Opcjonalnie agent `sync-agent/` (odświeżanie w tle) |
 | **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
 ---
@@ -100,7 +100,7 @@ src/
 - **Kopia zapasowa:** przycisk „Twoje dane” (sidebar lub stopka) → eksport do pliku JSON i import na innym urządzeniu. Import zastępuje obecne dane i pomija nieznane sekcje.
 - **Ochrona:** aplikacja prosi o *trwałe przechowywanie* (`navigator.storage.persist`), a każde odczytanie danych przechodzi walidację — uszkodzony zapis jest naprawiany lub zastępowany wartością domyślną zamiast wywalać interfejs.
 - **Awaria:** globalny `ErrorBoundary` pozwala pobrać kopię danych jeszcze przed czyszczeniem.
-- **Import z e-dziennika:** dane pobiera mały agent na Twoim komputerze (`sync-agent/`), a aplikacja tylko czyta gotowy plik z `http://127.0.0.1:8787`. Hasło nigdy nie trafia do przeglądarki, klucz parowania zostaje na dysku (`sync-agent/data/`, w `.gitignore`). Szczegóły i ograniczenia: [IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md).
+- **Import z e-dziennika:** domyślnie zakładka-przycisk w przeglądarce (bez instalacji, hasło nigdy nie trafia do Plecaka). Dla pełnej automatyzacji jest też agent (`sync-agent/`), a aplikacja czyta wtedy gotowy plik z `http://127.0.0.1:8787`. Hasło nigdy nie trafia do przeglądarki, klucz parowania zostaje na dysku (`sync-agent/data/`, w `.gitignore`). Szczegóły i ograniczenia: [IMPORT_DZIENNIK.md](./IMPORT_DZIENNIK.md).
 - Jedyny zewnętrzny request (poza lokalnym agentem) to czcionki z Google Fonts.
 
 ---

@@ -6,7 +6,10 @@ import { useJournal } from "../lib/journal/useJournal";
 import { decodeSnapshot, type JournalSnapshot } from "../lib/journal/types";
 import type { ImportSelection } from "../lib/journal/normalize";
 import { AGENT_URL, agentStatus, fetchAgentSnapshot, type AgentStatus } from "../lib/journal/agent";
-import { bookmarkletCode, consoleSnippet } from "../lib/journal/bookmarklet";
+import { ConnectDesktop } from "./ConnectDesktop";
+import { detectPlatform } from "../lib/mobile";
+import { useLocal } from "../lib/store";
+import { decodeText } from "../lib/schema";
 import { copyText } from "../lib/clipboard";
 
 type Step = "source" | "preview";
@@ -62,7 +65,6 @@ export function JournalImport({
   const journal = useJournal();
   const fileRef = useRef<HTMLInputElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const bookmarkRef = useRef<HTMLAnchorElement>(null);
 
   const [step, setStep] = useState<Step>("source");
   const [snapshot, setSnapshot] = useState<JournalSnapshot | null>(null);
@@ -73,6 +75,8 @@ export function JournalImport({
   const [pasteOpen, setPasteOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [paste, setPaste] = useState("");
+  const [isDesktop] = useState(() => detectPlatform() === "desktop");
+  const [lastSync, setLastSync] = useLocal<string>("journalLastSync", "", decodeText);
 
   const accept = useCallback((raw: unknown, originLabel: string) => {
     const decoded = decodeSnapshot(raw);
@@ -126,12 +130,6 @@ export function JournalImport({
     return () => previous?.focus?.();
   }, [open, incoming]);
 
-  // React nie przepuszcza `javascript:` w href, więc ustawiamy atrybut sami.
-  useEffect(() => {
-    if (!open) return;
-    bookmarkRef.current?.setAttribute("href", bookmarkletCode());
-  }, [open]);
-
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -176,6 +174,8 @@ export function JournalImport({
   const apply = useCallback(() => {
     if (!snapshot) return;
     const { result, undo } = journal.apply(snapshot, selection);
+    // Data ostatniego udanego importu — pokazywana w panelu i na karcie połączenia.
+    setLastSync(new Date().toISOString());
     const parts = [
       result.stats.gradesNew ? `+${result.stats.gradesNew} ocen` : "",
       result.stats.gradesUpdated ? `${result.stats.gradesUpdated} zaktualizowanych` : "",
@@ -189,7 +189,7 @@ export function JournalImport({
       action: { label: "Cofnij", run: undo },
     });
     onClose();
-  }, [snapshot, selection, journal, toast, onClose]);
+  }, [snapshot, selection, journal, toast, onClose, setLastSync]);
 
   if (!open) return null;
 
@@ -238,56 +238,19 @@ export function JournalImport({
 
         {step === "source" && (
           <div className="space-y-4">
-            {/* 1. Zakładka — bez instalacji */}
-            <div className="rounded-2xl border border-sage/40 bg-sage/8 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Icon name="link" className="w-4 h-4 text-sage" />
-                <p className="text-sm font-semibold">Najszybciej: jeden przycisk w przeglądarce</p>
+            {/* 1. Połączenie: na komputerze zakładka w przeglądarce, na telefonie plik */}
+            {isDesktop ? (
+              <ConnectDesktop lastSync={lastSync} />
+            ) : (
+              <div className="rounded-2xl border border-line bg-paper p-4">
+                <p className="text-sm font-semibold mb-1">Na telefonie najprościej z pliku</p>
+                <p className="text-xs text-muted">
+                  Pasek zakładek, na którym działa połączenie z dziennikiem, jest tylko w przeglądarce na komputerze.
+                  Tutaj wgraj plik <code>snapshot.json</code> (albo dowolny dokument <code>plecak-import-v1</code>) —
+                  przycisk niżej.
+                </p>
               </div>
-              <p className="text-xs text-muted mb-3">
-                Przeciągnij przycisk na pasek zakładek. Potem wystarczy otworzyć dziennik, kliknąć go i zatwierdzić dane
-                w Plecaku. Bez instalowania programów.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <a
-                  ref={bookmarkRef}
-                  href="#"
-                  draggable
-                  onClick={(event) => event.preventDefault()}
-                  className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-ink text-paper cursor-grab active:cursor-grabbing select-none"
-                  title="Przeciągnij mnie na pasek zakładek"
-                >
-                  🎒 Pobierz z dziennika
-                </a>
-                <CopyButton value={bookmarkletCode()} label="Skopiuj kod zakładki" />
-              </div>
-
-              <ol className="text-xs text-muted list-decimal pl-5 space-y-1">
-                <li>Przeciągnij przycisk na pasek zakładek (albo skopiuj kod i wklej go jako adres nowej zakładki).</li>
-                <li>Otwórz <b>eduvulcan.pl</b>, zaloguj się i kliknij zakładkę na pasku.</li>
-                <li>Dane pojawią się tutaj do zatwierdzenia.</li>
-              </ol>
-
-              <details className="mt-3">
-                <summary className="text-xs text-muted cursor-pointer">Nie widzę paska zakładek / jestem na telefonie</summary>
-                <div className="mt-2 space-y-2">
-                  <p className="text-xs text-muted">
-                    W przeglądarce na komputerze: <kbd className="border border-line rounded px-1">Ctrl</kbd>+
-                    <kbd className="border border-line rounded px-1">Shift</kbd>+
-                    <kbd className="border border-line rounded px-1">B</kbd> pokazuje pasek zakładek. Na telefonie
-                    zostaje wklejenie danych z pliku (niżej).
-                  </p>
-                  <p className="text-xs text-muted">
-                    Awaryjnie, gdy przeglądarka blokuje zakładki: otwórz dziennik, naciśnij{" "}
-                    <kbd className="border border-line rounded px-1">F12</kbd>, wklej poniższe w konsolę i zatwierdź.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <CopyButton value={consoleSnippet()} label="Skopiuj kod do konsoli" />
-                  </div>
-                </div>
-              </details>
-            </div>
+            )}
 
             {/* 2. Plik / wklejenie */}
             <div className="rounded-2xl border border-line p-4">

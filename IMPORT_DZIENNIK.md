@@ -14,9 +14,22 @@ Hasło nigdy nie trafia do aplikacji.
 
 ## 1a. Zakładka (domyślna, bez instalacji)
 
-1. Plecak → **Dziennik** → przeciągnij przycisk **„Pobierz z dziennika”** na pasek zakładek.
-2. Otwórz eduVULCAN, zaloguj się, kliknij zakładkę.
-3. Dane pojawiają się w Plecaku do zatwierdzenia (adres `#dziennik=…`).
+Plecak → **Dziennik** pokazuje kartę dopasowaną do urządzenia: na komputerze
+trzy kroki, na telefonie od razu import pliku (paska zakładek tam nie ma).
+
+Na komputerze:
+
+1. **Pokaż pasek zakładek** — `Ctrl`+`Shift`+`B` (Windows/Linux) albo
+   `⌘`+`Shift`+`B` (Mac); Plecak rozpoznaje system i przeglądarkę, więc
+   podpowiada właściwy skrót.
+2. **Przeciągnij przycisk „🎒 Pobierz z dziennika” na pasek** (albo skopiuj kod
+   i dodaj zakładkę ręcznie — `Ctrl`/`⌘`+`D`).
+3. **Otwórz eduvulcan.pl, zaloguj się i kliknij zakładkę.** Dane wracają do
+   Plecaka.
+
+Po pierwszym imporcie karta pamięta połączenie: pokazuje datę ostatniej
+aktualizacji i przycisk **„Odśwież z dziennika”** (otwiera dziennik — zostaje
+jedno kliknięcie zakładki).
 
 Jak to działa technicznie:
 
