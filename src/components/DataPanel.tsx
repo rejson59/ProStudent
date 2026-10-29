@@ -168,7 +168,7 @@ export function DataPanel({
               <div className="flex-1">
                 <p className="text-sm font-semibold">Import z e-dziennika</p>
                 <p className="text-xs text-muted">
-                  Oceny, plan lekcji i sprawdziany z dziennika — jednorazowo lub automatycznie z lokalnego agenta.
+                  Oceny, plan lekcji i sprawdziany z dziennika. Najprościej: skopiuj stronę dziennika i wklej.
                 </p>
               </div>
               <Btn variant="soft" className="!px-3 shrink-0" onClick={onOpenJournal}>

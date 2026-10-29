@@ -21,7 +21,7 @@
 | **Ogród** | Każda ukończona sesja fokusu sadzi unikalny kwiat (generowany z ziarna) |
 | **Dane** | Eksport/import kopii zapasowej (JSON), trwałe przechowywanie, pełny reset, samonaprawa uszkodzonych zapisów |
 | **Na telefon** | Instalacja z ekranu głównego (PWA): ikona obok aplikacji, pełny ekran, praca offline, skróty „Zadania”/„Plan”/„Dziennik”, „Udostępnij” z innej aplikacji tworzy zadanie, otwieranie plików `.json` |
-| **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami), sprawdzianów i zadań z **eduVULCAN**. **Na komputerze** karta prowadzi przez 3 kroki (pasek zakładek → przeciągnięcie przycisku → kliknięcie w dzienniku), z podpowiedziami skrótów dla Windows/Mac i przyciskiem „Otwórz eduvulcan.pl”; po pierwszym imporcie pokazuje stan połączenia i „Odśwież z dziennika”. **Na telefonie** zostaje plik / wklejenie. Opcjonalnie agent `sync-agent/` (odświeżanie w tle) |
+| **Dziennik** | Pozycja „Dziennik” w menu: import ocen, planu (z automatycznymi dzwonkami) i sprawdzianów z **eduVULCAN**. **Najprościej: skopiuj stronę dziennika i wklej** — Plecak sam rozpozna oceny, plan i sprawdziany (albo kliknij „Wklej ze schowka”). Ta sama droga działa na telefonie, tablecie i komputerze, bez instalacji. Opcjonalnie: jednorazowa zakładka w przeglądarce, plik `snapshot.json` albo agent `sync-agent/` |
 | **Globalne** | Paleta poleceń `Ctrl/⌘ + K`, skróty `1–6`, tryb dzień/noc/auto (z `prefers-color-scheme`), konfetti, powiadomienia o końcu sesji, „Cofnij” po usunięciu |
 
 ---
@@ -114,6 +114,14 @@ Plecak jest aplikacją PWA — nie trzeba nic instalować ze sklepu:
 - Po instalacji aplikacja otwiera się bez paska przeglądarki, **działa offline** (plan i zadania w autobusie), a długie przytrzymanie ikony pokazuje skróty: **Zadania**, **Plan**, **Dziennik**.
 - **„Udostępnij” z innej aplikacji** (np. link albo notatka) tworzy zadanie w Plecaku.
 - Plik `.json` z danymi dziennika można otworzyć bezpośrednio w Plecaku („Otwórz za pomocą”), a Plecak pokaże podgląd importu.
+
+## 📋 Import z dziennika w trzech krokach
+
+1. Otwórz dziennik i zaloguj się.
+2. Zaznacz całą stronę i skopiuj (`Ctrl`/`⌘`+`A`, potem `Ctrl`/`⌘`+`C`; na telefonie przytrzymaj tekst → „Zaznacz wszystko” → „Kopiuj”).
+3. W Plecaku: **Dziennik → Wklej ze schowka** (albo wklej w pole) → sprawdź podgląd → **Zaimportuj**.
+
+Plecak rozpoznaje cztery rzeczy: dokument `plecak-import-v1`, adres z `#dziennik=…`, skopiowaną stronę (HTML) oraz zwykły tekst z ocenami i planem. Nie zgaduje na siłę — jeśli nic nie rozpozna, mówi to wprost, a podgląd pokazuje, co znalazł, przed zapisem.
 
 ## 🧪 Testy
 
