@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { DATA_DECODERS, decodeText } from "../lib/schema";
+import { DATA_DECODERS, decodeBool, decodeText } from "../lib/schema";
+import { InstallCard } from "./InstallCard";
 import { useLocal } from "../lib/store";
 import {
   DATA_VERSION,
@@ -39,7 +40,7 @@ export function DataPanel({
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [autoSync, setAutoSync] = useLocal<boolean>("journalAutoSync", false);
+  const [autoSync, setAutoSync] = useLocal<boolean>("journalAutoSync", false, decodeBool);
   const [lastSync] = useLocal<string>("journalLastSync", "", decodeText);
   const [usage, setUsage] = useState<{ usage: number; quota: number } | null>(null);
   const [persisted, setPersisted] = useState<boolean | null>(null);
@@ -157,6 +158,8 @@ export function DataPanel({
         </p>
 
         <div className="space-y-3">
+          <InstallCard />
+
           <div className="rounded-2xl border border-line p-4">
             <div className="flex items-center gap-3">
               <span className="w-9 h-9 rounded-xl grid place-items-center bg-sky/15 text-sky shrink-0">

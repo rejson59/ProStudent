@@ -5,6 +5,7 @@ import { Icon } from "./Icon";
 import { Btn, CardTitle, Ring, SubjectDot } from "./ui";
 import { useLocal } from "../lib/store";
 import { decodeBells, decodeSubjects, decodeTasks, decodeText, decodeTimetable } from "../lib/schema";
+import { InstallCard } from "./InstallCard";
 import {
   BELLS,
   QUOTES,
@@ -85,7 +86,12 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
   };
 
   return (
-    <div className="grid gap-5 grid-cols-1 md:grid-cols-6 xl:grid-cols-12">
+    <div className="space-y-5">
+      {/* Na telefonie/tablecie: propozycja instalacji (znika po „Nie teraz”). */}
+      <div className="md:hidden">
+        <InstallCard compact dismissible />
+      </div>
+      <div className="grid gap-5 grid-cols-1 md:grid-cols-6 xl:grid-cols-12">
       {/* HERO */}
       <section className="md:col-span-6 xl:col-span-12 rounded-[1.75rem] overflow-hidden card !p-0 rise">
         <Sky now={now} className="min-h-[300px] md:min-h-[330px]">
@@ -328,6 +334,7 @@ export function Dashboard({ now, timer, go, sessions }: Props) {
         <p className="font-display text-xl md:text-2xl mt-3 leading-snug">„{quote[0]}”</p>
         <p className="text-sm mt-3 opacity-80">— {quote[1]}</p>
       </section>
+      </div>
     </div>
   );
 }

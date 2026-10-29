@@ -12,10 +12,11 @@ import { Icon } from "./components/Icon";
 import { useToast } from "./components/Toast";
 import { requestPersistence, useLocal, useNow } from "./lib/store";
 import { addDays, dateISO, defaultTasks, uid, type Session, type Task } from "./lib/data";
-import { decodeSessions, decodeTab, decodeTasks, decodeText, decodeTheme } from "./lib/schema";
+import { decodeBool, decodeSessions, decodeTab, decodeTasks, decodeText, decodeTheme } from "./lib/schema";
 import { fetchAgentSnapshot } from "./lib/journal/agent";
 import { readSnapshotFromHash } from "./lib/journal/hash";
-import type { JournalSnapshot } from "./lib/journal/types";
+import { readLaunchIntent, readSharedPayload, sharedPayloadToTask } from "./lib/mobile";
+import { decodeSnapshot, type JournalSnapshot } from "./lib/journal/types";
 import { useJournal } from "./lib/journal/useJournal";
 import { TAB_IDS, TABS, type TabId } from "./lib/nav";
 import { fmt, MODE_LABEL, useFocusTimer, type Mode } from "./lib/useTimer";
@@ -37,8 +38,9 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [dataPanel, setDataPanel] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [pendingShare, setPendingShare] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<JournalSnapshot | null>(null);
-  const [autoSync] = useLocal<boolean>("journalAutoSync", false);
+  const [autoSync] = useLocal<boolean>("journalAutoSync", false, decodeBool);
   const [lastSync, setLastSync] = useLocal("journalLastSync", "", decodeText);
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const journal = useJournal();
@@ -57,6 +59,60 @@ export default function App() {
     setIncoming(snapshot);
     setJournalOpen(true);
   }, []);
+
+  /**
+   * Uruchomienie z telefonu: skróty z ekranu głównego (manifest), „Udostępnij”
+   * z innej aplikacji oraz otwieranie plików `.json` z systemu.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const intent = readLaunchIntent(window.location.search);
+
+    const clean = () => window.history.replaceState(null, "", window.location.pathname);
+
+    // „Udostępnij” tekst/link z innej aplikacji → zadanie (bez formularza).
+    const shared = readSharedPayload(params);
+    if (shared) {
+      // Samo dodanie robimy w efekcie niżej — `quickAdd` jest zdefiniowany później.
+      setPendingShare(sharedPayloadToTask(shared).title);
+      clean();
+      return;
+    }
+
+    if (intent?.kind === "journal" || intent?.kind === "import") {
+      setJournalOpen(true);
+      clean();
+    } else if (intent?.kind === "tab") {
+      setTab(intent.tab);
+      clean();
+    }
+
+    // Android/Chrome: pliki przekazane z systemu (open with…, „Udostępnij plik”).
+    type LaunchParams = { files?: { getFile: () => Promise<File> }[] };
+    const queue = (window as Window & { launchQueue?: { setConsumer: (fn: (p: LaunchParams) => void) => void } }).launchQueue;
+    queue?.setConsumer(async (launch) => {
+      const handle = launch.files?.[0];
+      if (!handle) return;
+      try {
+        const file = await handle.getFile();
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(await file.text());
+        } catch {
+          parsed = null;
+        }
+        const snapshot = decodeSnapshot(parsed);
+        if (snapshot) {
+          setIncoming(snapshot);
+          setJournalOpen(true);
+        } else {
+          toast("Ten plik nie wygląda na dane z dziennika");
+        }
+      } catch {
+        toast("Nie udało się odczytać pliku");
+      }
+    });
+  }, [setTab, toast]);
 
   /**
    * Automatyczna synchronizacja z lokalnym agentem.
@@ -172,6 +228,13 @@ export default function App() {
     },
     [setTasks, toast, newId]
   );
+
+  // „Udostępnij" z systemu: zadanie dodajemy, gdy `quickAdd` jest już gotowy.
+  useEffect(() => {
+    if (!pendingShare) return;
+    quickAdd(pendingShare);
+    setPendingShare(null);
+  }, [pendingShare, quickAdd]);
 
   const actions: Action[] = useMemo(
     () => [
