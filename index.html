@@ -1,6 +1,21 @@
 <!doctype html>
 <html lang="pl">
   <head>
+    <!-- rj-portal-bootstrap:start: tylko ta sama domena i powrót z portalu -->
+    <script>
+      (function () {
+        try {
+          if (location.origin !== "https://rejson59.github.io" || window.top !== window.self ||
+              !sessionStorage.getItem("rj_portal_arrival_v1") ||
+              document.querySelector('script[src*="/js/portal-arrival.js"]')) return;
+          // Parser ładuje arkusz przed skryptem, zanim zacznie się aplikacja.
+          document.write('<link rel="stylesheet" href="/css/portal.css?v=11" data-rj-portal-style>' +
+            '<scr' + 'ipt src="/js/portal-arrival.js?v=10"></scr' + 'ipt>');
+        } catch (_) { /* Bez pamięci sesji gra/aplikacja działa normalnie. */ }
+      })();
+    </script>
+    <!-- rj-portal-bootstrap:end -->
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Plecak — szkolne centrum dowodzenia</title>

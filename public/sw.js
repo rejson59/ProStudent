@@ -10,7 +10,10 @@
  * czyszczenia danych.
  */
 
-const VERSION = "plecak-v1";
+const VERSION = "plecak-v2";
+const CACHE_PREFIX = "plecak-";
+const scope = new URL(self.registration.scope);
+const shareAction = new URL("./index.html?akcja=import", scope);
 const SHELL = [
   "./",
   "./index.html",
@@ -36,7 +39,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== VERSION).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -66,7 +69,9 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method === "POST") {
     const target = new URL(request.url);
-    if (target.origin === self.location.origin) {
+    // Przechwytuj wyłącznie deklarowany w manifeście cel systemowego udostępniania.
+    // Żądania POST innych aplikacji na tej samej domenie muszą przejść do sieci.
+    if (target.origin === shareAction.origin && target.pathname === shareAction.pathname && target.search === shareAction.search) {
       event.respondWith(handleShare(request));
     }
     return;
@@ -75,7 +80,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return; // czcionki i agent zostają poza cache
+  if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) return; // inne projekty i czcionki zostają poza cache
 
   // Dokumenty: sieć, a bez sieci ostatnia zapisana kopia.
   if (request.mode === "navigate" || request.destination === "document") {
@@ -86,7 +91,10 @@ self.addEventListener("fetch", (event) => {
           void caches.open(VERSION).then((cache) => cache.put("./index.html", copy));
           return response;
         })
-        .catch(async () => (await caches.match("./index.html")) ?? (await caches.match("./")) ?? Response.error())
+        .catch(async () => {
+          const cache = await caches.open(VERSION);
+          return (await cache.match("./index.html")) ?? (await cache.match("./")) ?? Response.error();
+        })
     );
     return;
   }
@@ -94,12 +102,13 @@ self.addEventListener("fetch", (event) => {
   if (!isAsset(request.url)) return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.open(VERSION).then(async (cache) => {
+      const cached = await cache.match(request);
       const network = fetch(request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            void caches.open(VERSION).then((cache) => cache.put(request, copy));
+            void cache.put(request, copy);
           }
           return response;
         })
