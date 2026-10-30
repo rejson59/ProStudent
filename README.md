@@ -152,3 +152,9 @@ Projekt jest funkcjonalny i przechodzi `typecheck` + testy + `build`.
 2. Utwórz branch: `git checkout -b feat/nazwa-zmiany`
 3. Przed commitem: `npm run typecheck && npm run build`
 4. Otwórz Pull Request — CI (`.github/workflows/ci.yml`) sprawdzi typy i build.
+
+## Przejście z portalu Rejson
+
+Na `https://rejson59.github.io` dokument rozpoznaje jednorazowy znacznik przejścia i wczytuje animację wyjścia przed startem aplikacji — również wtedy, gdy projekt ma własny service worker. Bez znacznika, w ramce, na innych domenach i przy niedostępnej pamięci sesji kod nie pobiera zasobów portalu. Skrypt nie przenosi kont ani danych między domenami; na innych originach wyjście z portalu nie jest gwarantowane.
+
+Plecak zachowuje własny tryb offline; jego service worker czyści tylko stare cache o prefiksie `plecak-` i przechwytuje POST wyłącznie dla zadeklarowanego w manifeście udostępniania. Nie usuwa cache innych projektów.
