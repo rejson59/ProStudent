@@ -9,6 +9,7 @@ import { CommandPalette, type Action } from "./components/CommandPalette";
 import { DataPanel } from "./components/DataPanel";
 import { JournalImport } from "./components/JournalImport";
 import { Icon } from "./components/Icon";
+import CommunityAccount from "./components/CommunityAccount";
 import { useToast } from "./components/Toast";
 import { requestPersistence, useLocal, useNow } from "./lib/store";
 import { addDays, dateISO, defaultTasks, uid, type Session, type Task } from "./lib/data";
@@ -37,6 +38,8 @@ export default function App() {
   const [freshId, setFreshId] = useState<string>();
   const [palette, setPalette] = useState(false);
   const [dataPanel, setDataPanel] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
   const [journalOpen, setJournalOpen] = useState(false);
   const [pendingShare, setPendingShare] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<JournalSnapshot | null>(null);
@@ -203,6 +206,7 @@ export default function App() {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (accountOpen) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPalette((prev) => !prev);
@@ -216,7 +220,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [go, palette, dataPanel, journalOpen]);
+  }, [go, palette, dataPanel, journalOpen, accountOpen]);
 
   const quickAdd = useCallback(
     (title: string) => {
@@ -373,6 +377,14 @@ export default function App() {
             <kbd className="hidden lg:inline text-[10px] border border-line rounded-md px-1.5">⌘K</kbd>
           </button>
           <button
+            onClick={() => setAccountOpen(true)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-2xl text-sm text-muted hover:text-ink hover:bg-line/50 transition justify-center lg:justify-start cursor-pointer"
+            title="Konto Rejson" aria-label="Konto Rejson"
+          >
+            <Icon name="user" className="w-4 h-4" />
+            <span className="hidden lg:inline">Konto Rejson</span>
+          </button>
+          <button
             onClick={() => setJournalOpen(true)}
             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-2xl text-sm text-muted hover:text-ink hover:bg-line/50 transition justify-center lg:justify-start cursor-pointer"
             title="Połącz z e-dziennikiem (eduVULCAN)"
@@ -402,7 +414,7 @@ export default function App() {
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-paper/80 backdrop-blur-xl border-b border-line">
+      <header className="md:hidden sticky top-0 z-30 flex flex-wrap gap-y-1 items-center justify-between px-4 py-3 bg-paper/80 backdrop-blur-xl border-b border-line">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🎒</span>
           <span className="font-display text-xl font-semibold">Plecak</span>
@@ -416,6 +428,9 @@ export default function App() {
               {fmt(timer.remaining)}
             </button>
           )}
+          <button onClick={() => setAccountOpen(true)} className="p-2 rounded-xl text-muted cursor-pointer" aria-label="Konto Rejson" title="Konto Rejson">
+            <Icon name="user" />
+          </button>
           <button onClick={() => setPalette(true)} className="p-2 rounded-xl text-muted cursor-pointer" aria-label="Szukaj">
             <Icon name="search" />
           </button>
@@ -489,6 +504,7 @@ export default function App() {
         ))}
       </nav>
 
+      {accountOpen && <CommunityAccount onClose={closeAccount} />}
       <CommandPalette open={palette} onClose={() => setPalette(false)} actions={actions} onQuickAdd={quickAdd} />
       <DataPanel open={dataPanel} onClose={() => setDataPanel(false)} onOpenJournal={() => { setDataPanel(false); setJournalOpen(true); }} />
       <JournalImport
