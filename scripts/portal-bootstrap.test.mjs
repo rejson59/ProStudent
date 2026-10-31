@@ -23,8 +23,8 @@ for (const path of ['index.html', ...(existsSync('dist/index.html') ? ['dist/ind
   test(`${path}: tylko prawdziwy powrót na wspólnej domenie ładuje CSS i JS`, () => {
     const script = scriptFrom(path);
     const html = execute(script);
-    assert.match(html, /href="\/css\/portal\.css\?v=11"[^>]*data-rj-portal-style/);
-    assert.match(html, /<script src="\/js\/portal-arrival\.js\?v=10"><\/script>/);
+    assert.match(html, /href="\/css\/portal\.css\?v=12"[^>]*data-rj-portal-style/);
+    assert.match(html, /<script src="\/js\/portal-arrival\.js\?v=11"><\/script>/);
     assert.ok(html.indexOf('<link') < html.indexOf('<script'));
     for (const opts of [{ marker: null }, { origin: 'https://example.com' }, { existing: true }, { iframe: true }, { throws: true }]) {
       assert.equal(execute(script, opts), '');
