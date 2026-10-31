@@ -26,7 +26,7 @@
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "vite": "7.3.7",
-    "vite-plugin-singlefile": "2.3.0",
+    "vite-plugin-singlefile": "2.3.4",
     "vitest": "^3.2.7"
   },
   "description": "Plecak – szkolne centrum dowodzenia: plan lekcji, zadania, oceny, timer fokusu i fiszki w jednej aplikacji.",
