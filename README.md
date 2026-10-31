@@ -158,3 +158,9 @@ Projekt jest funkcjonalny i przechodzi `typecheck` + testy + `build`.
 Na `https://rejson59.github.io` dokument rozpoznaje jednorazowy znacznik przejścia i wczytuje animację wyjścia przed startem aplikacji — również wtedy, gdy projekt ma własny service worker. Bez znacznika, w ramce, na innych domenach i przy niedostępnej pamięci sesji kod nie pobiera zasobów portalu. Skrypt nie przenosi kont ani danych między domenami; na innych originach wyjście z portalu nie jest gwarantowane.
 
 Plecak zachowuje własny tryb offline; jego service worker czyści tylko stare cache o prefiksie `plecak-` i przechwytuje POST wyłącznie dla zadeklarowanego w manifeście udostępniania. Nie usuwa cache innych projektów.
+
+## Wspólne konto Rejson
+
+Przycisk „Konto Rejson” pozwala zalogować się lub utworzyć konto bez opuszczania Plecaka. To opcjonalne konto korzysta z tego samego backendu co strona główna i RejChat, z hasłem albo dotychczasowym PIN-em. Na tym samym originie projekty używają wspólnej sesji; na innej domenie trzeba zalogować się osobno. PIN można zamienić na hasło na stronie konta Rejsona. Bez e-maila automatyczne odzyskiwanie zapomnianego hasła nie jest dostępne.
+
+**Konto nie synchronizuje jeszcze danych szkolnych.** Oceny, plan, zadania i inne dane pozostają lokalnie. Żadne dane Plecaka nie są wysyłane do konta przy logowaniu i nie są wtedy zastępowane ani usuwane. Do przenoszenia służy dotychczasowa kopia plikowa w panelu „Twoje dane”; import po potwierdzeniu zastępuje lokalne dane Plecaka. Plecak nadal działa bez konta i bez sieci; weryfikacja konta wymaga połączenia. Wylogowanie usuwa lokalną sesję, ale nie unieważnia jej po stronie serwera.
