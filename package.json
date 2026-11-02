@@ -21,13 +21,13 @@
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.1",
+    "@vitejs/plugin-react": "6.1.2",
     "jsdom": "^26.1.0",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
-    "vite": "7.3.7",
+    "vite": "8.3.5",
     "vite-plugin-singlefile": "2.3.0",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.5"
   },
   "description": "Plecak – szkolne centrum dowodzenia: plan lekcji, zadania, oceny, timer fokusu i fiszki w jednej aplikacji.",
   "engines": {
